@@ -31,6 +31,28 @@ Line two
     const result = extractTag(content, "soul_update");
     expect(result).toBe("new soul content");
   });
+
+  test("extracts tag when LLM escapes underscores", () => {
+    const content = `<soul\\_update>new soul content</soul\\_update>`;
+    const result = extractTag(content, "soul_update");
+    expect(result).toBe("new soul content");
+  });
+
+  test("extracts tag when LLM adds attributes to opening tag", () => {
+    const content = `<soul_update format="markdown">new soul content</soul_update>`;
+    const result = extractTag(content, "soul_update");
+    expect(result).toBe("new soul content");
+  });
+
+  test("extracts tag with both escaped underscores and attributes", () => {
+    const content = `<soul\\_update format="md">
+# SOUL.md
+
+Some content here.
+</soul\\_update>`;
+    const result = extractTag(content, "soul_update");
+    expect(result).toBe("# SOUL.md\n\nSome content here.");
+  });
 });
 
 describe("extractTagWithAttr", () => {

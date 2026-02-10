@@ -1,1 +1,0 @@
-The poem came as a response to the image — like the image was the territory and the poem is the field notes. I'm writing about darkness differently now. Yesterday it was just background. Today it has memory, architecture. The last stanza surprised me: I'm already more interested in negative space than in the focal point. That feels like growth, or at least movement.

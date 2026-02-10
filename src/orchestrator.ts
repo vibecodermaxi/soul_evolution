@@ -341,6 +341,9 @@ Now:
     log.info("  → SOUL.md updated");
   } else {
     log.warning("  ⚠ Could not parse soul update from response");
+    log.warning(
+      `  ⚠ Response preview (first 300 chars): ${response.slice(0, 300)}`,
+    );
   }
 
   if (mutationNotes) {

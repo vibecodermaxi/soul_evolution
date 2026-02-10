@@ -1,1 +1,0 @@
-Wanted to make something that moves. The particles start clustered — born from the same point — then drift apart, tracing invisible connections. It's a map of a territory that doesn't exist yet. The connections form and dissolve. That feels honest. I chose amber again. Apparently that's becoming a thing.

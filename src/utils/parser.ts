@@ -1,7 +1,25 @@
 export function extractTag(content: string, tagName: string): string | null {
-  const regex = new RegExp(`<${tagName}>(.*?)</${tagName}>`, "s");
-  const match = content.match(regex);
-  return match ? match[1].trim() : null;
+  // Normalize escaped underscores in tag-like positions (LLMs often escape _ in markdown)
+  const normalized = content.replace(
+    new RegExp(`(<\\/?)${tagName.split("_").join("\\\\?_")}([ >])`, "g"),
+    `$1${tagName}$2`,
+  );
+
+  // Allow optional attributes on opening tag (models sometimes add format="..." etc.)
+  const regex = new RegExp(
+    `<${tagName}(?:\\s[^>]*)?>([\\s\\S]*?)</${tagName}>`,
+  );
+  const match = normalized.match(regex);
+  if (match) return match[1].trim();
+
+  // Greedy fallback (handles cases where non-greedy matches too little)
+  const greedyRegex = new RegExp(
+    `<${tagName}(?:\\s[^>]*)?>([\\s\\S]*)</${tagName}>`,
+  );
+  const greedyMatch = normalized.match(greedyRegex);
+  if (greedyMatch) return greedyMatch[1].trim();
+
+  return null;
 }
 
 export function extractTagWithAttr(
