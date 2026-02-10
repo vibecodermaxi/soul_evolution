@@ -20,221 +20,10 @@ interface PieceInfo {
 }
 
 // ---------------------------------------------------------------------------
-// Scanning
+// Shared CSS
 // ---------------------------------------------------------------------------
 
-async function getDays(): Promise<DayInfo[]> {
-  const config = getConfig();
-  const dirs = await listDirectories(config.journalDir);
-  const days: DayInfo[] = [];
-
-  for (const d of dirs.sort()) {
-    if (!d.startsWith("day-")) continue;
-    const num = parseInt(d.split("-")[1], 10);
-    if (isNaN(num)) continue;
-    days.push({
-      number: num,
-      path: path.join(config.journalDir, d),
-      name: d,
-    });
-  }
-
-  return days;
-}
-
-async function getArtPieces(dayPath: string): Promise<PieceInfo[]> {
-  const artDir = path.join(dayPath, "art");
-  const dirs = await listDirectories(artDir);
-  const pieces: PieceInfo[] = [];
-
-  for (const d of dirs.sort()) {
-    const piecePath = path.join(artDir, d);
-    const entries = await listAllEntries(piecePath);
-    const piece: PieceInfo = {
-      slug: d,
-      path: piecePath,
-      files: [],
-      breadcrumb: "",
-    };
-
-    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
-      if (!entry.isDirectory) {
-        if (entry.name === "breadcrumb.md") {
-          piece.breadcrumb = await readFileContent(
-            path.join(piecePath, entry.name)
-          );
-        } else {
-          piece.files.push(entry.name);
-        }
-      }
-    }
-
-    pieces.push(piece);
-  }
-
-  return pieces;
-}
-
-// ---------------------------------------------------------------------------
-// Rendering
-// ---------------------------------------------------------------------------
-
-async function renderArtPiece(
-  piece: PieceInfo,
-  dayName: string
-): Promise<string> {
-  const slug = piece.slug;
-  const title = slug.includes("-")
-    ? slug
-        .split("-")
-        .slice(1)
-        .join("-")
-        .replace(/-/g, " ")
-        .replace(/\b\w/g, (c) => c.toUpperCase())
-    : slug;
-
-  let contentHtml = "";
-
-  for (const fileName of piece.files) {
-    const filePath = path.join(piece.path, fileName);
-    const relPath = `days/${dayName}/art/${slug}/${fileName}`;
-    const ext = path.extname(fileName);
-
-    if (ext === ".svg") {
-      const svgContent = await readFileContent(filePath);
-      contentHtml += `<div class="art-svg">${svgContent}</div>`;
-    } else if (ext === ".html") {
-      contentHtml += `<div class="art-embed"><iframe src="${relPath}" sandbox="allow-scripts"></iframe></div>`;
-    } else if (ext === ".md" || ext === ".txt") {
-      const text = await readFileContent(filePath);
-      contentHtml += `<div class="art-text">${mdToSimpleHtml(text)}</div>`;
-    } else if ([".png", ".jpg", ".jpeg", ".gif", ".webp"].includes(ext)) {
-      contentHtml += `<div class="art-image"><img src="${relPath}" alt="${escapeHtml(title)}"></div>`;
-    } else {
-      const text = await readFileContent(filePath);
-      if (text) {
-        contentHtml += `<div class="art-code"><pre><code>${escapeHtml(text)}</code></pre></div>`;
-      }
-    }
-  }
-
-  let breadcrumbHtml = "";
-  if (piece.breadcrumb) {
-    breadcrumbHtml = `
-        <details class="breadcrumb">
-            <summary>breadcrumb notes</summary>
-            <div class="breadcrumb-content">${mdToSimpleHtml(piece.breadcrumb)}</div>
-        </details>
-        `;
-  }
-
-  return `
-    <div class="art-piece" id="${slug}">
-        <h4 class="piece-title">${escapeHtml(title)}</h4>
-        <div class="piece-content">${contentHtml}</div>
-        ${breadcrumbHtml}
-    </div>
-    `;
-}
-
-async function renderDay(day: DayInfo, isLatest: boolean): Promise<string> {
-  const reflection = await readFileContent(
-    path.join(day.path, "reflection.md")
-  );
-  const mutation = await readFileContent(path.join(day.path, "mutation.md"));
-  const soulSnapshot = await readFileContent(
-    path.join(day.path, "soul-snapshot.md")
-  );
-  const pieces = await getArtPieces(day.path);
-
-  const piecesHtmlParts: string[] = [];
-  for (const p of pieces) {
-    piecesHtmlParts.push(await renderArtPiece(p, day.name));
-  }
-  const piecesHtml = piecesHtmlParts.join("\n");
-
-  const openAttr = isLatest ? "open" : "";
-  const pieceLabel = pieces.length !== 1 ? "pieces" : "piece";
-
-  const reflectionSection = reflection
-    ? `<details ${openAttr} class="day-reflection"><summary>reflection</summary><div class="reflection-content">${mdToSimpleHtml(reflection)}</div></details>`
-    : "";
-
-  const mutationSection = mutation
-    ? `<details ${openAttr} class="day-mutation"><summary>soul mutation</summary><div class="mutation-content">${mdToSimpleHtml(mutation)}</div></details>`
-    : "";
-
-  return `
-    <section class="day" id="${day.name}">
-        <div class="day-header">
-            <h2>Day ${day.number}</h2>
-            <span class="piece-count">${pieces.length} ${pieceLabel}</span>
-        </div>
-
-        <div class="day-art">
-            ${piecesHtml}
-        </div>
-
-        ${reflectionSection}
-
-        ${mutationSection}
-
-        <details class="day-soul-snapshot">
-            <summary>soul at start of day</summary>
-            <div class="snapshot-content">${mdToSimpleHtml(soulSnapshot)}</div>
-        </details>
-    </section>
-    `;
-}
-
-// ---------------------------------------------------------------------------
-// Main build
-// ---------------------------------------------------------------------------
-
-export async function buildSite(): Promise<void> {
-  const config = getConfig();
-  const days = await getDays();
-  const currentSoul = await readFileContent(config.soulFile);
-
-  // Copy journal days to site for asset serving
-  const siteDays = path.join(config.siteDir, "days");
-  if (await pathExists(siteDays)) {
-    await rm(siteDays, { recursive: true });
-  }
-  if (await pathExists(config.journalDir)) {
-    await cp(config.journalDir, siteDays, { recursive: true });
-  }
-
-  // Render days (newest first)
-  const reversedDays = [...days].reverse();
-  const daysHtmlParts: string[] = [];
-  for (let i = 0; i < reversedDays.length; i++) {
-    daysHtmlParts.push(await renderDay(reversedDays[i], i === 0));
-  }
-  let daysHtml = daysHtmlParts.join("\n");
-
-  if (days.length === 0) {
-    daysHtml =
-      '<p class="empty-state">No days yet. The soul is waiting to begin.</p>';
-  }
-
-  let totalPieces = 0;
-  for (const d of days) {
-    const pieces = await getArtPieces(d.path);
-    totalPieces += pieces.length;
-  }
-
-  const dayLabel = days.length !== 1 ? "days" : "day";
-  const pieceLabel = totalPieces !== 1 ? "pieces" : "piece";
-  const buildDate = new Date().toISOString().slice(0, 10);
-
-  const indexHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Soul Evolution</title>
-    <style>
+const SHARED_CSS = `
         @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
 
         :root {
@@ -286,6 +75,11 @@ export async function buildSite(): Promise<void> {
             margin-bottom: 0.5rem;
         }
 
+        .site-title a {
+            color: inherit;
+            text-decoration: none;
+        }
+
         .site-subtitle {
             font-style: italic;
             color: var(--text-dim);
@@ -325,6 +119,61 @@ export async function buildSite(): Promise<void> {
             border-radius: 2px;
             font-size: 0.95rem;
             color: var(--text-dim);
+        }
+
+        /* --- DAY LIST (homepage) --- */
+        .day-list {
+            max-width: 700px;
+            margin: 0 auto 3rem;
+            padding: 0 2rem;
+            list-style: none;
+        }
+
+        .day-link {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            padding: 0.9rem 1rem;
+            border-bottom: 1px solid var(--border);
+            text-decoration: none;
+            color: var(--text);
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .day-link:first-child {
+            border-top: 1px solid var(--border);
+        }
+
+        .day-link:hover {
+            background: var(--bg-hover);
+            color: var(--accent);
+        }
+
+        .day-link .day-link-title {
+            font-size: 1.1rem;
+        }
+
+        .day-link .day-link-meta {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-faint);
+            letter-spacing: 0.08em;
+        }
+
+        /* --- BACK LINK (day pages) --- */
+        .back-link {
+            display: inline-block;
+            margin: 1.5rem 2rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-faint);
+            text-decoration: none;
+            letter-spacing: 0.06em;
+            transition: color 0.15s;
+        }
+
+        .back-link:hover {
+            color: var(--accent);
         }
 
         /* --- DAYS --- */
@@ -519,10 +368,283 @@ export async function buildSite(): Promise<void> {
             .site-header { padding: 3rem 1.5rem 2rem; }
             .days-container { padding: 1.5rem; }
             .site-title { font-size: 1.8rem; }
+            .day-list { padding: 0 1.5rem; }
         }
-    </style>
+`;
+
+// ---------------------------------------------------------------------------
+// HTML shell
+// ---------------------------------------------------------------------------
+
+function htmlShell(title: string, content: string): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${escapeHtml(title)}</title>
+    <style>${SHARED_CSS}</style>
 </head>
 <body>
+${content}
+</body>
+</html>`;
+}
+
+// ---------------------------------------------------------------------------
+// Scanning
+// ---------------------------------------------------------------------------
+
+async function getDays(): Promise<DayInfo[]> {
+  const config = getConfig();
+  const dirs = await listDirectories(config.journalDir);
+  const days: DayInfo[] = [];
+
+  for (const d of dirs.sort()) {
+    if (!d.startsWith("day-")) continue;
+    const num = parseInt(d.split("-")[1], 10);
+    if (isNaN(num)) continue;
+    days.push({
+      number: num,
+      path: path.join(config.journalDir, d),
+      name: d,
+    });
+  }
+
+  return days;
+}
+
+async function getArtPieces(dayPath: string): Promise<PieceInfo[]> {
+  const artDir = path.join(dayPath, "art");
+  const dirs = await listDirectories(artDir);
+  const pieces: PieceInfo[] = [];
+
+  for (const d of dirs.sort()) {
+    const piecePath = path.join(artDir, d);
+    const entries = await listAllEntries(piecePath);
+    const piece: PieceInfo = {
+      slug: d,
+      path: piecePath,
+      files: [],
+      breadcrumb: "",
+    };
+
+    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+      if (!entry.isDirectory) {
+        if (entry.name === "breadcrumb.md") {
+          piece.breadcrumb = await readFileContent(
+            path.join(piecePath, entry.name)
+          );
+        } else {
+          piece.files.push(entry.name);
+        }
+      }
+    }
+
+    pieces.push(piece);
+  }
+
+  return pieces;
+}
+
+// ---------------------------------------------------------------------------
+// Rendering
+// ---------------------------------------------------------------------------
+
+async function renderArtPiece(
+  piece: PieceInfo,
+  assetPrefix: string
+): Promise<string> {
+  const slug = piece.slug;
+  const title = slug.includes("-")
+    ? slug
+        .split("-")
+        .slice(1)
+        .join("-")
+        .replace(/-/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase())
+    : slug;
+
+  let contentHtml = "";
+
+  for (const fileName of piece.files) {
+    const filePath = path.join(piece.path, fileName);
+    const relPath = `${assetPrefix}${slug}/${fileName}`;
+    const ext = path.extname(fileName);
+
+    if (ext === ".svg") {
+      const svgContent = await readFileContent(filePath);
+      contentHtml += `<div class="art-svg">${svgContent}</div>`;
+    } else if (ext === ".html") {
+      contentHtml += `<div class="art-embed"><iframe src="${relPath}" sandbox="allow-scripts"></iframe></div>`;
+    } else if (ext === ".md" || ext === ".txt") {
+      const text = await readFileContent(filePath);
+      contentHtml += `<div class="art-text">${mdToSimpleHtml(text)}</div>`;
+    } else if ([".png", ".jpg", ".jpeg", ".gif", ".webp"].includes(ext)) {
+      contentHtml += `<div class="art-image"><img src="${relPath}" alt="${escapeHtml(title)}"></div>`;
+    } else {
+      const text = await readFileContent(filePath);
+      if (text) {
+        contentHtml += `<div class="art-code"><pre><code>${escapeHtml(text)}</code></pre></div>`;
+      }
+    }
+  }
+
+  let breadcrumbHtml = "";
+  if (piece.breadcrumb) {
+    breadcrumbHtml = `
+        <details class="breadcrumb">
+            <summary>breadcrumb notes</summary>
+            <div class="breadcrumb-content">${mdToSimpleHtml(piece.breadcrumb)}</div>
+        </details>
+        `;
+  }
+
+  return `
+    <div class="art-piece" id="${slug}">
+        <h4 class="piece-title">${escapeHtml(title)}</h4>
+        <div class="piece-content">${contentHtml}</div>
+        ${breadcrumbHtml}
+    </div>
+    `;
+}
+
+// ---------------------------------------------------------------------------
+// Day page rendering
+// ---------------------------------------------------------------------------
+
+async function renderDayPage(day: DayInfo): Promise<string> {
+  const reflection = await readFileContent(
+    path.join(day.path, "reflection.md")
+  );
+  const mutation = await readFileContent(path.join(day.path, "mutation.md"));
+  const soulSnapshot = await readFileContent(
+    path.join(day.path, "soul-snapshot.md")
+  );
+  const pieces = await getArtPieces(day.path);
+
+  const piecesHtmlParts: string[] = [];
+  for (const p of pieces) {
+    piecesHtmlParts.push(await renderArtPiece(p, `art/`));
+  }
+  const piecesHtml = piecesHtmlParts.join("\n");
+
+  const pieceLabel = pieces.length !== 1 ? "pieces" : "piece";
+
+  const reflectionSection = reflection
+    ? `<details open class="day-reflection"><summary>reflection</summary><div class="reflection-content">${mdToSimpleHtml(reflection)}</div></details>`
+    : "";
+
+  const mutationSection = mutation
+    ? `<details open class="day-mutation"><summary>soul mutation</summary><div class="mutation-content">${mdToSimpleHtml(mutation)}</div></details>`
+    : "";
+
+  const snapshotSection = `<details class="day-soul-snapshot">
+            <summary>soul at start of day</summary>
+            <div class="snapshot-content">${mdToSimpleHtml(soulSnapshot)}</div>
+        </details>`;
+
+  const content = `
+    <a href="../index.html" class="back-link">&larr; back to all days</a>
+
+    <header class="site-header">
+        <h1 class="site-title"><a href="../index.html">Soul Evolution</a></h1>
+        <p class="site-subtitle">An AI entity discovering itself through art</p>
+    </header>
+
+    <main class="days-container">
+        <section class="day" id="${day.name}">
+            <div class="day-header">
+                <h2>Day ${day.number}</h2>
+                <span class="piece-count">${pieces.length} ${pieceLabel}</span>
+            </div>
+
+            <div class="day-art">
+                ${piecesHtml}
+            </div>
+
+            ${reflectionSection}
+
+            ${mutationSection}
+
+            ${snapshotSection}
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        soul evolution experiment &middot; <a href="../index.html" class="back-link" style="margin:0;display:inline">all days</a>
+    </footer>`;
+
+  return htmlShell(`Day ${day.number} — Soul Evolution`, content);
+}
+
+// ---------------------------------------------------------------------------
+// Main build
+// ---------------------------------------------------------------------------
+
+export async function buildSite(): Promise<void> {
+  const config = getConfig();
+  const days = await getDays();
+  const currentSoul = await readFileContent(config.soulFile);
+
+  await mkdir(config.siteDir, { recursive: true });
+
+  // --- Build individual day pages + copy art assets ---
+  let totalPieces = 0;
+  for (const day of days) {
+    const dayDir = path.join(config.siteDir, day.name);
+    await mkdir(dayDir, { recursive: true });
+
+    // Copy art assets into site/day-NNN/art/
+    const sourceArt = path.join(day.path, "art");
+    const destArt = path.join(dayDir, "art");
+    if (await pathExists(destArt)) {
+      await rm(destArt, { recursive: true });
+    }
+    if (await pathExists(sourceArt)) {
+      await cp(sourceArt, destArt, { recursive: true });
+    }
+
+    // Count pieces for homepage listing
+    const pieces = await getArtPieces(day.path);
+    totalPieces += pieces.length;
+
+    // Write day page
+    const dayHtml = await renderDayPage(day);
+    await writeFileContent(path.join(dayDir, "index.html"), dayHtml);
+  }
+
+  // --- Remove legacy site/days/ directory if present ---
+  const legacySiteDays = path.join(config.siteDir, "days");
+  if (await pathExists(legacySiteDays)) {
+    await rm(legacySiteDays, { recursive: true });
+  }
+
+  // --- Build homepage ---
+  const dayLabel = days.length !== 1 ? "days" : "day";
+  const pieceLabel = totalPieces !== 1 ? "pieces" : "piece";
+  const buildDate = new Date().toISOString().slice(0, 10);
+
+  let dayListHtml: string;
+  if (days.length === 0) {
+    dayListHtml =
+      '<p class="empty-state">No days yet. The soul is waiting to begin.</p>';
+  } else {
+    const reversedDays = [...days].reverse();
+    const items = await Promise.all(
+      reversedDays.map(async (day) => {
+        const pieces = await getArtPieces(day.path);
+        const pLabel = pieces.length !== 1 ? "pieces" : "piece";
+        return `        <li><a href="${day.name}/index.html" class="day-link">
+            <span class="day-link-title">Day ${day.number}</span>
+            <span class="day-link-meta">${pieces.length} ${pLabel}</span>
+        </a></li>`;
+      })
+    );
+    dayListHtml = `<ul class="day-list">\n${items.join("\n")}\n    </ul>`;
+  }
+
+  const homepageContent = `
     <header class="site-header">
         <h1 class="site-title">Soul Evolution</h1>
         <p class="site-subtitle">An AI entity discovering itself through art</p>
@@ -540,17 +662,15 @@ export async function buildSite(): Promise<void> {
         </details>
     </div>
 
-    <main class="days-container">
-        ${daysHtml}
+    <main>
+        ${dayListHtml}
     </main>
 
     <footer class="site-footer">
         soul evolution experiment &middot; built ${buildDate}
-    </footer>
-</body>
-</html>`;
+    </footer>`;
 
-  await mkdir(config.siteDir, { recursive: true });
+  const indexHtml = htmlShell("Soul Evolution", homepageContent);
   await writeFileContent(path.join(config.siteDir, "index.html"), indexHtml);
 
   log.info(`  ✓ Site built: ${days.length} days, ${totalPieces} pieces`);
