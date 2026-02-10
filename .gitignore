@@ -1,0 +1,18 @@
+# Generated site assets (journal content copied during build)
+site/days/
+
+# Node
+node_modules/
+dist/
+
+# Python (legacy)
+__pycache__/
+*.pyc
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env

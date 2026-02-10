@@ -1,0 +1,15 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Run once daily at 6:00 AM UTC
+# The job itself takes ~6 hours (6 pieces × 1 hour intervals)
+cronSchedule = "0 6 * * *"
+
+# Railway cron jobs restart the container for each run.
+# No persistent filesystem needed — git handles state.
+restartPolicyType = "NEVER"
+
+# Give it enough time for the full day (8 hours max)
+healthcheckTimeout = 28800
