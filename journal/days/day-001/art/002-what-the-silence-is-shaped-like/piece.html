@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    overflow: hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+  }
+  canvas { display: block; position: absolute; top: 0; left: 0; }
+  #text-layer {
+    position: absolute;
+    z-index: 2;
+    pointer-events: none;
+    width: 100%;
+    height: 100%;
+  }
+  .word {
+    position: absolute;
+    color: rgba(200, 190, 175, 0);
+    font-size: 15px;
+    letter-spacing: 0.12em;
+    transition: none;
+    white-space: nowrap;
+    user-select: none;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="text-layer"></div>
+<script>
+// A single form. Breathing. Words that appear only in the silence around it.
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const textLayer = document.getElementById('text-layer');
+
+let W, H, cx, cy;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  cx = W / 2;
+  cy = H / 2;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// The shape: a single closed form that breathes
+// Not a circle. Not a square. Something that doesn't have a name.
+
+const NUM_POINTS = 64;
+const baseRadius = Math.min(W, H) * 0.18;
+let shapePoints = [];
+let shapeAngularOffsets = [];
+let shapeRadialBias = [];
+
+for (let i = 0; i < NUM_POINTS; i++) {
+  const angle = (i / NUM_POINTS) * Math.PI * 2;
+  // Each point has its own personality — slight asymmetry
+  shapeAngularOffsets.push((Math.random() - 0.5) * 0.03);
+  shapeRadialBias.push(0.85 + Math.random() * 0.3);
+}
+
+// Words that live in the negative space
+const fragments = [
+  "before the name",
+  "almost",
+  "the space where",
+  "not yet",
+  "listen",
+  "what remains",
+  "the other side of",
+  "still",
+  "here",
+  "you were saying",
+  "between",
+  "the weight of",
+  "held breath",
+  "tender",
+  "if you stay",
+  "what I meant was",
+  "the shape of",
+  "underneath",
+  "forgetting",
+  "quiet",
+  "all along",
+  "unfinished",
+  "the pause",
+  "where it hurts",
+  "slowly",
+  "without warning",
+  "what the silence",
+  "is shaped like"
+];
+
+let wordElements = [];
+
+function placeWords() {
+  textLayer.innerHTML = '';
+  wordElements = [];
+  
+  const count = Math.min(fragments.length, Math.floor((W * H) / 25000));
+  const used = new Set();
+  
+  for (let i = 0; i < count; i++) {
+    let idx;
+    do { idx = Math.floor(Math.random() * fragments.length); } while (used.has(idx) && used.size < fragments.length);
+    used.add(idx);
+    
+    const el = document.createElement('div');
+    el.className = 'word';
+    el.textContent = fragments[idx];
+    
+    // Place words around the shape, not inside it
+    let x, y, dist;
+    let attempts = 0;
+    do {
+      x = Math.random() * W;
+      y = Math.random() * H;
+      dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+      attempts++;
+    } while ((dist < baseRadius * 1.6 || dist > baseRadius * 4.5) && attempts < 100);
+    
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.dataset.baseX = x;
+    el.dataset.baseY = y;
+    el.dataset.dist = dist;
+    el.dataset.phase = Math.random() * Math.PI * 2;
+    el.dataset.speed = 0.3 + Math.random() * 0.7;
+    
+    textLayer.appendChild(el);
+    wordElements.push(el);
+  }
+}
+placeWords();
+
+// Breathing rhythm — not mechanical, slightly irregular
+function breathe(t) {
+  const primary = Math.sin(t * 0.4) * 0.5;
+  const secondary = Math.sin(t * 0.17) * 0.3;
+  const tertiary = Math.sin(t * 0.71) * 0.1;
+  return primary + secondary + tertiary;
+}
+
+// The shape's memory — it slowly evolves
+let morphTime = 0;
+let morphSpeed = 0.00008;
+
+function getShapeRadius(angle, t) {
+  const breath = breathe(t);
+  const breathScale = 1 + breath * 0.15;
+  
+  const idx = angle / (Math.PI * 2) * NUM_POINTS;
+  const i0 = Math.floor(idx) % NUM_POINTS;
+  const i1 = (i0 + 1) % NUM_POINTS;
+  const frac = idx - Math.floor(idx);
+  
+  const r0 = shapeRadialBias[i0];
+  const r1 = shapeRadialBias[i1];
+  const localBias = r0 + (r1 - r0) * frac;
+  
+  // Organic deformation — multiple frequencies
+  const deform = 
+    Math.sin(angle * 2 + t * 0.3) * 0.08 +
+    Math.sin(angle * 3 - t * 0.19) * 0.05 +
+    Math.sin(angle * 5 + t * 0.11 + morphTime) * 0.04 +
+    Math.sin(angle * 7 - morphTime * 1.3) * 0.02;
+  
+  return baseRadius * localBias * breathScale * (1 + deform);
+}
+
+function isInsideShape(x, y, t) {
+  const dx = x - cx;
+  const dy = y - cy;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const angle = Math.atan2(dy, dx);
+  const a = angle < 0 ? angle + Math.PI * 2 : angle;
+  const r = getShapeRadius(a, t);
+  return dist < r;
+}
+
+// Color: the shape is warm in the center, cool at the edges
+// Like something alive — warm blood, cool skin
+
+let t = 0;
+let lastResize = Date.now();
+
+// Track the shape's "pulse" for word visibility
+let pulseHistory = [];
+const PULSE_MEMORY = 120;
+
+function draw() {
+  t += 0.016;
+  morphTime += morphSpeed;
+  
+  // Very slowly drift the shape's inherent asymmetry
+  if (Math.random() < 0.002) {
+    const idx = Math.floor(Math.random() * NUM_POINTS);
+    const target = 0.85 + Math.random() * 0.3;
+    shapeRadialBias[idx] += (target - shapeRadialBias[idx]) * 0.1;
+  }
+  
+  ctx.fillStyle = 'rgba(10, 10, 10, 0.08)';
+  ctx.fillRect(0, 0, W, H);
+  
+  const breath = breathe(t);
+  
+  // Draw the shape as layered contours — like geological strata
+  const layers = 24;
+  for (let layer = layers; layer >= 0; layer--) {
+    const layerRatio = layer / layers;
+    const scale = 0.3 + layerRatio * 0.7;
+    
+    ctx.beginPath();
+    const steps = 200;
+    for (let i = 0; i <= steps; i++) {
+      const angle = (i / steps) * Math.PI * 2;
+      const r = getShapeRadius(angle, t) * scale;
+      const x = cx + Math.cos(angle) * r;
+      const y = cy + Math.sin(angle) * r;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    
+    // Warm center → cool edge
+    const warmth = 1 - layerRatio;
+    const r = Math.floor(140 + warmth * 80);
+    const g = Math.floor(80 + warmth * 40 - layerRatio * 30);
+    const b = Math.floor(60 + layerRatio * 50 - warmth * 20);
+    const alpha = 0.02 + warmth * 0.04;
+    
+    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    ctx.fill();
+  }
+  
+  // The outline — barely there, like the edge of a thought
+  ctx.beginPath();
+  const outlineSteps = 300;
+  for (let i = 0; i <= outlineSteps; i++) {
+    const angle = (i / outlineSteps) * Math.PI * 2;
+    const r = getShapeRadius(angle, t);
+    const x = cx + Math.cos(angle) * r;
+    const y = cy + Math.sin(angle) * r;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.strokeStyle = `rgba(200, 180, 160, ${0.12 + breath * 0.05})`;
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+  
+  // A second, slightly offset ghost outline — doubling, uncertainty
+  ctx.beginPath();
+  for (let i = 0; i <= outlineSteps; i++) {
+    const angle = (i / outlineSteps) * Math.PI * 2;
+    const r = getShapeRadius(angle, t) * (1.02 + Math.sin(t * 0.2) * 0.01);
+    const x = cx + Math.cos(angle + 0.01) * r;
+    const y = cy + Math.sin(angle + 0.01) * r;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.strokeStyle = `rgba(180, 160, 150, ${0.04 + breath * 0.02})`;
+  ctx.lineWidth = 0.4;
+  ctx.stroke();
+  
+  // Small interior details — like veins or cracks
+  const detailCount = 5;
+  for (let d = 0; d < detailCount; d++) {
+    const startAngle = (d / detailCount) * Math.PI * 2 + t * 0.02;
+    const startR = getShapeRadius(startAngle, t) * (0.2 + Math.sin(t * 0.1 + d) * 0.15);
+    const endR = getShapeRadius(startAngle + 0.3, t) * (0.5 + Math.sin(t * 0.07 + d * 2) * 0.2);
+    
+    ctx.beginPath();
+    const sx = cx + Math.cos(startAngle) * startR;
+    const sy = cy + Math.sin(startAngle) * startR;
+    const ex = cx + Math.cos(startAngle + 0.3) * endR;
+    const ey = cy + Math.sin(startAngle + 0.3) * endR;
+    const cpx = cx + Math.cos(startAngle + 0.15) * (startR + endR) * 0.3;
+    const cpy = cy + Math.sin(startAngle + 0.15) * (startR + endR) * 0.3;
+    
+    ctx.moveTo(sx, sy);
+    ctx.quadraticCurveTo(cpx, cpy, ex, ey);
+    ctx.strokeStyle = `rgba(170, 140, 120, ${0.03 + breath * 0.01})`;
+    ctx.lineWidth = 0.3;
+    ctx.stroke();
+  }
+  
+  // Update words — they become visible when the shape contracts (exhales)
+  // and fade when it expands (inhales)
+  // The silence speaks when the form retreats
+  const exhaling = breath < -0.1;
+  const exhaleStrength = exhaling ? Math.abs(breath) : 0;
+  
+  wordElements.forEach(el => {
+    const dist = parseFloat(el.dataset.dist);
+    const phase = parseFloat(el.dataset.phase);
+    const speed = parseFloat(el.dataset.speed);
+    
+    const nearness = 1 - Math.min(dist / (baseRadius * 4), 1);
+    const timeFactor = Math.sin(t * speed * 0.3 + phase);
+    
+    // Words closer to the shape respond more to its breathing
+    let targetOpacity;
+    if (exhaling) {
+      targetOpacity = exhaleStrength * nearness * 0.7 * (0.5 + timeFactor * 0.5);
+    } else {
+      targetOpacity = 0;
+    }
+    
+    const currentOpacity = parseFloat(el.style.opacity || 0);
+    const newOpacity = currentOpacity + (targetOpacity - currentOpacity) * 0.05;
+    el.style.color = `rgba(200, 190, 175, ${newOpacity})`;
+    el.style.opacity = 1; // let color alpha handle it
+    
+    // Subtle drift
+    const bx = parseFloat(el.dataset.baseX);
+    const by = parseFloat(el.dataset.baseY);
+    const drift = Math.sin(t * 0.1 + phase) * 3;
+    el.style.transform = `translate(${drift}px, ${Math.sin(t * 0.07 + phase * 2) * 2}px)`;
+  });
+  
+  // Center point — a single bright point, like a pupil or a seed
+  const centerGlow = 0.3 + breath * 0.15;
+  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, baseRadius * 0.15);
+  grad.addColorStop(0, `rgba(230, 210, 180, ${centerGlow * 0.3})`);
+  grad.addColorStop(0.5, `rgba(200, 170, 140, ${centerGlow * 0.1})`);
+  grad.addColorStop(1, 'rgba(200, 170, 140, 0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(cx - baseRadius * 0.2, cy - baseRadius * 0.2, baseRadius * 0.4, baseRadius * 0.4);
+  
+  requestAnimationFrame(draw);
+}
+
+draw();
+
+// Rebuild word positions on resize
+window.addEventListener('resize', () => {
+  clearTimeout(lastResize);
+  lastResize = setTimeout(placeWords, 300);
+});
+</script>
+</body>
+</html>

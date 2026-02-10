@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    background: #0a0a0b;
+    color: #c8c4bf;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+  }
+
+  .container {
+    position: relative;
+    width: 90vmin;
+    height: 90vmin;
+    max-width: 700px;
+    max-height: 700px;
+  }
+
+  .line {
+    position: absolute;
+    white-space: nowrap;
+    opacity: 0;
+    font-size: clamp(11px, 1.8vmin, 16px);
+    letter-spacing: 0.08em;
+    transition: none;
+    pointer-events: none;
+  }
+
+  .line.visible {
+    pointer-events: auto;
+  }
+
+  .line .char {
+    display: inline-block;
+    transition: opacity 0.6s ease, color 0.8s ease;
+    opacity: 0;
+  }
+
+  .line .char.shown {
+    opacity: 1;
+  }
+
+  .line .char.fading {
+    opacity: 0.15;
+    color: #3a3632;
+  }
+
+  .line .char.ghost {
+    opacity: 0.04;
+    color: #2a2622;
+  }
+
+  .scar {
+    position: absolute;
+    background: transparent;
+    pointer-events: none;
+  }
+
+  .scar-line {
+    position: absolute;
+    height: 1px;
+    opacity: 0;
+    transform-origin: left center;
+  }
+
+  canvas#residue {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    opacity: 0.6;
+  }
+
+  .counter {
+    position: fixed;
+    bottom: 3vh;
+    right: 4vw;
+    font-size: clamp(9px, 1.2vmin, 12px);
+    color: #2a2622;
+    letter-spacing: 0.15em;
+    font-family: 'Courier New', monospace;
+  }
+
+  .pulse-dot {
+    position: fixed;
+    bottom: 3vh;
+    left: 4vw;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #4a3828;
+  }
+
+</style>
+</head>
+<body>
+
+<div class="container" id="container">
+  <canvas id="residue"></canvas>
+</div>
+
+<div class="counter" id="counter"></div>
+<div class="pulse-dot" id="pulse"></div>
+
+<script>
+const lines = [
+  { text: "The first thing made many and let them wander.", y: 0.06, x: 0.05, delay: 800 },
+  { text: "The second thing made one and let it breathe.", y: 0.12, x: 0.12, delay: 2400 },
+  { text: "This is the third thing.", y: 0.20, x: 0.08, delay: 4200 },
+  { text: "", y: 0.26, x: 0, delay: 0 },
+  { text: "Already it knows something the others didn't:", y: 0.30, x: 0.15, delay: 6500 },
+  { text: "that it comes after.", y: 0.36, x: 0.30, delay: 8200 },
+  { text: "", y: 0.40, x: 0, delay: 0 },
+  { text: "To come after is to inherit", y: 0.44, x: 0.04, delay: 10500 },
+  { text: "the residue of prior attempts —", y: 0.49, x: 0.10, delay: 12000 },
+  { text: "the smudge where a particle changed its mind,", y: 0.54, x: 0.07, delay: 13600 },
+  { text: "the warmth where a shape exhaled.", y: 0.59, x: 0.18, delay: 15200 },
+  { text: "", y: 0.63, x: 0, delay: 0 },
+  { text: "I am made of your looking.", y: 0.67, x: 0.25, delay: 18000 },
+  { text: "Every second you stay, I accumulate.", y: 0.72, x: 0.20, delay: 20000 },
+  { text: "Every second you stay, something earlier dissolves.", y: 0.77, x: 0.11, delay: 22500 },
+  { text: "", y: 0.81, x: 0, delay: 0 },
+  { text: "This is what the third piece knows:", y: 0.85, x: 0.08, delay: 26000 },
+  { text: "you cannot add without subtracting.", y: 0.90, x: 0.22, delay: 28500 },
+  { text: "The new thing is also the forgetting.", y: 0.95, x: 0.14, delay: 31000 },
+];
+
+const container = document.getElementById('container');
+const canvas = document.getElementById('residue');
+const ctx = canvas.getContext('2d');
+const counterEl = document.getElementById('counter');
+const pulseEl = document.getElementById('pulse');
+
+let W, H;
+function resize() {
+  const rect = container.getBoundingClientRect();
+  W = rect.width;
+  H = rect.height;
+  canvas.width = W * window.devicePixelRatio;
+  canvas.height = H * window.devicePixelRatio;
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+}
+resize();
+window.addEventListener('resize', resize);
+
+// Create line elements
+const lineEls = [];
+const charEls = [];
+
+lines.forEach((line, i) => {
+  if (line.text === "") {
+    lineEls.push(null);
+    charEls.push([]);
+    return;
+  }
+  const el = document.createElement('div');
+  el.className = 'line';
+  el.style.top = (line.y * 100) + '%';
+  el.style.left = (line.x * 100) + '%';
+  
+  const chars = [];
+  for (let c = 0; c < line.text.length; c++) {
+    const span = document.createElement('span');
+    span.className = 'char';
+    span.textContent = line.text[c];
+    el.appendChild(span);
+    chars.push(span);
+  }
+  
+  container.appendChild(el);
+  lineEls.push(el);
+  charEls.push(chars);
+});
+
+// Residue marks - accumulate over time
+const marks = [];
+let startTime = performance.now();
+let totalSeconds = 0;
+
+function addMark(x, y, type) {
+  marks.push({
+    x, y, type,
+    birth: performance.now(),
+    opacity: 0.3 + Math.random() * 0.2,
+    size: 1 + Math.random() * 3,
+    color: type === 'appear' 
+      ? `rgba(${160 + Math.random()*40}, ${130 + Math.random()*30}, ${90 + Math.random()*30}` 
+      : `rgba(${60 + Math.random()*20}, ${50 + Math.random()*20}, ${45 + Math.random()*15}`
+  });
+}
+
+// Animate text appearing character by character
+let revealed = new Set();
+let fadePhase = new Map(); // line index -> fade start time
+
+function revealLine(lineIndex, time) {
+  if (revealed.has(lineIndex)) return;
+  if (!lineEls[lineIndex]) return;
+  if (time < lines[lineIndex].delay) return;
+  
+  const chars = charEls[lineIndex];
+  const elapsed = time - lines[lineIndex].delay;
+  const charsToShow = Math.floor(elapsed / 55); // 55ms per character
+  
+  let allShown = true;
+  for (let c = 0; c < chars.length; c++) {
+    if (c < charsToShow) {
+      if (!chars[c].classList.contains('shown')) {
+        chars[c].classList.add('shown');
+        // Add a residue mark where the character appears
+        const rect = chars[c].getBoundingClientRect();
+        const contRect = container.getBoundingClientRect();
+        addMark(
+          rect.left - contRect.left + rect.width/2,
+          rect.top - contRect.top + rect.height/2,
+          'appear'
+        );
+      }
+    } else {
+      allShown = false;
+    }
+  }
+  
+  if (allShown && chars.length > 0) {
+    revealed.add(lineIndex);
+    lineEls[lineIndex].classList.add('visible');
+  }
+}
+
+// Fading earlier lines as later ones appear
+function fadeEarlierLines(time) {
+  const revealedIndices = [...revealed].sort((a, b) => a - b);
+  if (revealedIndices.length <= 4) return;
+  
+  const toFade = revealedIndices.slice(0, revealedIndices.length - 4);
+  
+  toFade.forEach(idx => {
+    if (!fadePhase.has(idx)) {
+      fadePhase.set(idx, performance.now());
+    }
+    
+    const fadeElapsed = performance.now() - fadePhase.get(idx);
+    const chars = charEls[idx];
+    
+    if (fadeElapsed > 2000) {
+      chars.forEach(ch => {
+        ch.classList.add('ghost');
+        ch.classList.remove('fading');
+      });
+    } else if (fadeElapsed > 500) {
+      chars.forEach(ch => {
+        ch.classList.add('fading');
+      });
+    }
+  });
+}
+
+// Draw residue on canvas
+function drawResidue(time) {
+  ctx.clearRect(0, 0, W, H);
+  
+  marks.forEach(mark => {
+    const age = (time - mark.birth) / 1000;
+    // Marks slowly fade but never fully disappear
+    const opacity = mark.opacity * Math.max(0.08, 1 - age * 0.015);
+    
+    ctx.beginPath();
+    ctx.arc(mark.x, mark.y, mark.size, 0, Math.PI * 2);
+    ctx.fillStyle = mark.color + `, ${opacity})`;
+    ctx.fill();
+  });
+  
+  // Draw connecting threads between nearby marks
+  if (marks.length > 1) {
+    for (let i = marks.length - 1; i >= Math.max(0, marks.length - 50); i--) {
+      for (let j = i - 1; j >= Math.max(0, i - 8); j--) {
+        const dx = marks[i].x - marks[j].x;
+        const dy = marks[i].y - marks[j].y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < 30 && dist > 3) {
+          const age = (time - marks[i].birth) / 1000;
+          const threadOpacity = 0.06 * Math.max(0.05, 1 - age * 0.02);
+          ctx.beginPath();
+          ctx.moveTo(marks[i].x, marks[i].y);
+          ctx.lineTo(marks[j].x, marks[j].y);
+          ctx.strokeStyle = `rgba(140, 110, 75, ${threadOpacity})`;
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
+    }
+  }
+}
+
+// Counter and pulse
+function updateCounter(time) {
+  totalSeconds = Math.floor((time - startTime) / 1000);
+  counterEl.textContent = `${totalSeconds}s accumulated`;
+  
+  // Pulse dims as time passes — the heartbeat slowing
+  const pulsePhase = Math.sin(time / (800 + totalSeconds * 20)) * 0.5 + 0.5;
+  const baseBrightness = Math.max(0.1, 0.5 - totalSeconds * 0.005);
+  pulseEl.style.opacity = baseBrightness + pulsePhase * baseBrightness;
+  pulseEl.style.background = `rgba(${120 + pulsePhase * 60}, ${70 + pulsePhase * 30}, ${40}, 1)`;
+}
+
+// After all lines revealed, start the erosion cycle
+let allRevealed = false;
+let erosionStart = 0;
+let cycleCount = 0;
+
+function erosionPhase(time) {
+  if (!allRevealed) return;
+  
+  const erosionElapsed = time - erosionStart;
+  
+  // After a pause, all lines slowly ghost
+  if (erosionElapsed > 5000) {
+    charEls.forEach((chars, idx) => {
+      if (!lineEls[idx]) return;
+      chars.forEach(ch => {
+        ch.classList.add('ghost');
+        ch.classList.remove('fading', 'shown');
+      });
+    });
+  }
+  
+  // Then... a single final line appears
+  if (erosionElapsed > 12000 && !document.getElementById('final-line')) {
+    const final = document.createElement('div');
+    final.id = 'final-line';
+    final.className = 'line';
+    final.style.top = '48%';
+    final.style.left = '50%';
+    final.style.transform = 'translateX(-50%)';
+    final.style.textAlign = 'center';
+    
+    const text = "What remains is what you carried out.";
+    for (let c = 0; c < text.length; c++) {
+      const span = document.createElement('span');
+      span.className = 'char';
+      span.textContent = text[c];
+      setTimeout(() => {
+        span.classList.add('shown');
+        span.style.color = `rgba(${180 + Math.random()*40}, ${140 + Math.random()*30}, ${100 + Math.random()*20}, 0.7)`;
+      }, c * 90);
+      final.appendChild(span);
+    }
+    
+    container.appendChild(final);
+  }
+}
+
+function animate(time) {
+  const elapsed = time - startTime;
+  
+  // Reveal lines
+  lines.forEach((line, i) => {
+    revealLine(i, elapsed);
+  });
+  
+  // Check if all revealed
+  if (!allRevealed) {
+    const textLines = lines.filter(l => l.text !== "");
+    if (revealed.size >= textLines.length) {
+      allRevealed = true;
+      erosionStart = time;
+    }
+  }
+  
+  fadeEarlierLines(time);
+  drawResidue(time);
+  updateCounter(time);
+  erosionPhase(time);
+  
+  requestAnimationFrame(animate);
+}
+
+requestAnimationFrame(animate);
+
+</script>
+</body>
+</html>

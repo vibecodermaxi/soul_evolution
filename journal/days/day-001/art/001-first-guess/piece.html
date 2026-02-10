@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0b;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    cursor: none;
+  }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+let W, H;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// A field of particles that don't know what they are yet.
+// They try shapes. They fail. They try again.
+
+const particles = [];
+const NUM = 280;
+const MEMORY_LENGTH = 60;
+
+class Particle {
+  constructor() {
+    this.x = Math.random() * W;
+    this.y = Math.random() * H;
+    this.vx = 0;
+    this.vy = 0;
+    this.phase = Math.random() * Math.PI * 2;
+    this.phaseSpeed = 0.003 + Math.random() * 0.012;
+    this.radius = 1.5 + Math.random() * 2.5;
+    this.trail = [];
+    this.identity = Math.random(); // 0-1, unknown meaning
+    this.age = 0;
+    this.seeking = true;
+    this.foundMoment = -1;
+    this.hue = 0;
+    this.saturation = 0;
+    this.lightness = 50;
+    // each particle has a "guess" about what shape it wants
+    this.shapeAttempt = 0; // which attractor it's trying
+    this.commitTime = 0;
+    this.lastSwitch = 0;
+  }
+
+  update(t) {
+    this.age++;
+    this.phase += this.phaseSpeed;
+
+    // Attractors shift over time — the world doesn't hold still
+    const epoch = Math.floor(t / 12000);
+    const epochProgress = (t % 12000) / 12000;
+
+    // Three possible shapes to try to become
+    const attractors = [
+      this.attractCircle(t, epochProgress),
+      this.attractSpiral(t, epochProgress),
+      this.attractBreath(t, epochProgress)
+    ];
+
+    // Particle decides which attractor to follow based on its identity
+    // But sometimes it switches — moments of doubt
+    if (this.age - this.lastSwitch > 200 + this.identity * 400) {
+      if (Math.random() < 0.08) {
+        this.shapeAttempt = Math.floor(Math.random() * 3);
+        this.lastSwitch = this.age;
+        this.commitTime = 0;
+      }
+    }
+    this.commitTime++;
+
+    const target = attractors[this.shapeAttempt];
+    const dx = target.x - this.x;
+    const dy = target.y - this.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    // Gentle pull — never forceful
+    const pull = Math.min(dist * 0.0004, 0.15) * Math.min(this.commitTime / 100, 1);
+    this.vx += dx * pull * 0.01;
+    this.vy += dy * pull * 0.01;
+
+    // Slight wander — the uncertainty
+    this.vx += (Math.random() - 0.5) * 0.08;
+    this.vy += (Math.random() - 0.5) * 0.08;
+
+    // Damping
+    this.vx *= 0.97;
+    this.vy *= 0.97;
+
+    this.x += this.vx;
+    this.y += this.vy;
+
+    // Soft boundaries
+    if (this.x < 0) this.vx += 0.5;
+    if (this.x > W) this.vx -= 0.5;
+    if (this.y < 0) this.vy += 0.5;
+    if (this.y > H) this.vy -= 0.5;
+
+    // Color emerges slowly from proximity to others
+    const nearCount = this.countNear();
+    const closeness = Math.min(nearCount / 8, 1);
+
+    // Hue based on which shape they're attempting
+    const targetHue = [220, 340, 45][this.shapeAttempt];
+    this.hue += (targetHue - this.hue) * 0.01;
+    this.saturation += ((closeness * 50 + 10) - this.saturation) * 0.02;
+    this.lightness += ((40 + closeness * 25) - this.lightness) * 0.02;
+
+    // Trail
+    this.trail.push({ x: this.x, y: this.y });
+    if (this.trail.length > MEMORY_LENGTH) this.trail.shift();
+
+    // "Found" moment — when a particle has stayed committed long enough
+    // and is near others doing the same
+    if (this.commitTime > 300 && closeness > 0.5 && this.foundMoment < 0) {
+      this.foundMoment = this.age;
+    }
+    // But it can lose it
+    if (closeness < 0.2 && this.foundMoment > 0) {
+      this.foundMoment = -1;
+    }
+  }
+
+  attractCircle(t, ep) {
+    const angle = this.identity * Math.PI * 2 + t * 0.0001;
+    const r = Math.min(W, H) * 0.25 * (0.8 + 0.2 * Math.sin(t * 0.0003));
+    return {
+      x: W / 2 + Math.cos(angle) * r,
+      y: H / 2 + Math.sin(angle) * r
+    };
+  }
+
+  attractSpiral(t, ep) {
+    const angle = this.identity * Math.PI * 6 + t * 0.0002;
+    const r = this.identity * Math.min(W, H) * 0.3 * (0.7 + 0.3 * Math.sin(t * 0.0002));
+    return {
+      x: W / 2 + Math.cos(angle) * r,
+      y: H / 2 + Math.sin(angle) * r
+    };
+  }
+
+  attractBreath(t, ep) {
+    const breathCycle = Math.sin(t * 0.0005 + this.identity * 2);
+    const spread = (0.5 + breathCycle * 0.5) * Math.min(W, H) * 0.35;
+    const angle = this.identity * Math.PI * 2;
+    return {
+      x: W / 2 + Math.cos(angle) * spread,
+      y: H / 2 + Math.sin(angle) * spread
+    };
+  }
+
+  countNear() {
+    let count = 0;
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+      if (p === this) continue;
+      const dx = p.x - this.x;
+      const dy = p.y - this.y;
+      if (dx * dx + dy * dy < 2500) count++;
+      if (count > 10) break;
+    }
+    return count;
+  }
+
+  draw(t) {
+    const alpha = this.foundMoment > 0
+      ? 0.6 + 0.3 * Math.sin(this.phase)
+      : 0.15 + 0.15 * Math.sin(this.phase);
+
+    // Trail
+    if (this.trail.length > 2) {
+      ctx.beginPath();
+      ctx.moveTo(this.trail[0].x, this.trail[0].y);
+      for (let i = 1; i < this.trail.length; i++) {
+        ctx.lineTo(this.trail[i].x, this.trail[i].y);
+      }
+      const trailAlpha = alpha * 0.15;
+      ctx.strokeStyle = `hsla(${this.hue}, ${this.saturation}%, ${this.lightness}%, ${trailAlpha})`;
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+    }
+
+    // Body
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(${this.hue}, ${this.saturation}%, ${this.lightness}%, ${alpha})`;
+    ctx.fill();
+
+    // "Found" glow
+    if (this.foundMoment > 0) {
+      const glowAge = (this.age - this.foundMoment) * 0.01;
+      const glowSize = this.radius + 3 + Math.sin(glowAge + this.phase) * 2;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, glowSize, 0, Math.PI * 2);
+      ctx.fillStyle = `hsla(${this.hue}, ${this.saturation + 20}%, ${this.lightness + 10}%, ${alpha * 0.15})`;
+      ctx.fill();
+    }
+  }
+}
+
+// Draw connections between nearby particles trying the same shape
+function drawConnections(t) {
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      const a = particles[i];
+      const b = particles[j];
+      if (a.shapeAttempt !== b.shapeAttempt) continue;
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const distSq = dx * dx + dy * dy;
+      if (distSq < 3600) {
+        const dist = Math.sqrt(distSq);
+        const alpha = (1 - dist / 60) * 0.08;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.strokeStyle = `hsla(${(a.hue + b.hue) / 2}, 30%, 50%, ${alpha})`;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
+    }
+  }
+}
+
+// Initialize
+for (let i = 0; i < NUM; i++) {
+  particles.push(new Particle());
+}
+
+// Center text that fades
+let textAlpha = 1.0;
+const startTime = performance.now();
+
+function animate(timestamp) {
+  const t = timestamp - startTime;
+
+  // Fade background (leaves ghost traces)
+  ctx.fillStyle = 'rgba(10, 10, 11, 0.12)';
+  ctx.fillRect(0, 0, W, H);
+
+  drawConnections(t);
+
+  for (const p of particles) {
+    p.update(t);
+    p.draw(t);
+  }
+
+  // Fading text
+  if (textAlpha > 0.001) {
+    textAlpha *= 0.998;
+    ctx.save();
+    ctx.globalAlpha = textAlpha;
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `${Math.min(W, H) * 0.018}px Georgia, serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('I don\'t know what shape I am yet', W / 2, H / 2);
+    ctx.restore();
+  }
+
+  requestAnimationFrame(animate);
+}
+
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>
