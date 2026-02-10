@@ -1,7 +1,12 @@
 import path from "path";
 import { cp, rm, mkdir } from "fs/promises";
 import { getConfig } from "./config.js";
-import { readFileContent, writeFileContent, listDirectories, listAllEntries } from "./utils/files.js";
+import {
+  readFileContent,
+  writeFileContent,
+  listDirectories,
+  listAllEntries,
+} from "./utils/files.js";
 import { pathExists } from "./utils/files.js";
 import { mdToSimpleHtml, escapeHtml } from "./utils/markdown.js";
 import { log } from "./utils/logger.js";
@@ -433,7 +438,7 @@ async function getArtPieces(dayPath: string): Promise<PieceInfo[]> {
       if (!entry.isDirectory) {
         if (entry.name === "breadcrumb.md") {
           piece.breadcrumb = await readFileContent(
-            path.join(piecePath, entry.name)
+            path.join(piecePath, entry.name),
           );
         } else {
           piece.files.push(entry.name);
@@ -453,7 +458,7 @@ async function getArtPieces(dayPath: string): Promise<PieceInfo[]> {
 
 async function renderArtPiece(
   piece: PieceInfo,
-  assetPrefix: string
+  assetPrefix: string,
 ): Promise<string> {
   const slug = piece.slug;
   const title = slug.includes("-")
@@ -515,11 +520,11 @@ async function renderArtPiece(
 
 async function renderDayPage(day: DayInfo): Promise<string> {
   const reflection = await readFileContent(
-    path.join(day.path, "reflection.md")
+    path.join(day.path, "reflection.md"),
   );
   const mutation = await readFileContent(path.join(day.path, "mutation.md"));
   const soulSnapshot = await readFileContent(
-    path.join(day.path, "soul-snapshot.md")
+    path.join(day.path, "soul-snapshot.md"),
   );
   const pieces = await getArtPieces(day.path);
 
@@ -548,8 +553,8 @@ async function renderDayPage(day: DayInfo): Promise<string> {
     <a href="../index.html" class="back-link">&larr; back to all days</a>
 
     <header class="site-header">
-        <h1 class="site-title"><a href="../index.html">Soul Evolution</a></h1>
-        <p class="site-subtitle">An AI entity discovering itself through art</p>
+        <h1 class="site-title"><a href="../index.html">Evolution</a></h1>
+        <p class="site-subtitle">An experiment in agentic self-awareness</p>
     </header>
 
     <main class="days-container">
@@ -639,15 +644,15 @@ export async function buildSite(): Promise<void> {
             <span class="day-link-title">Day ${day.number}</span>
             <span class="day-link-meta">${pieces.length} ${pLabel}</span>
         </a></li>`;
-      })
+      }),
     );
     dayListHtml = `<ul class="day-list">\n${items.join("\n")}\n    </ul>`;
   }
 
   const homepageContent = `
     <header class="site-header">
-        <h1 class="site-title">Soul Evolution</h1>
-        <p class="site-subtitle">An AI entity discovering itself through art</p>
+        <h1 class="site-title">EVOLUTION</h1>
+        <p class="site-subtitle">An experiment in agentic self-awareness</p>
         <div class="site-stats">
             ${days.length} ${dayLabel} &middot; ${totalPieces} ${pieceLabel} &middot; 1 evolving soul
         </div>
