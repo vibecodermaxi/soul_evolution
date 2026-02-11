@@ -48,8 +48,8 @@ function parseArgs(): CliArgs {
 // ---------------------------------------------------------------------------
 
 async function gitSetup(git: SimpleGit): Promise<void> {
-  await git.addConfig("user.email", "soul@evolution.art");
-  await git.addConfig("user.name", "Soul Evolution");
+  await git.addConfig("user.email", "soul@evolution.art", false, "global");
+  await git.addConfig("user.name", "Soul Evolution", false, "global");
 }
 
 async function gitPull(git: SimpleGit): Promise<void> {
