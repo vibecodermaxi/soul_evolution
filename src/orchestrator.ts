@@ -6,6 +6,8 @@ import { readFileContent, writeFileContent, writeBinaryContent, listDirectories 
 import { log } from "./utils/logger.js";
 import { extractTag, extractTagWithAttr, slugify } from "./utils/parser.js";
 import { buildSite } from "./site-builder.js";
+import { postToTypefully } from "./typefully.js";
+import { uploadToCloudinary } from "./cloudinary.js";
 
 // ---------------------------------------------------------------------------
 // OpenRouter API (OpenAI-compatible)
@@ -213,7 +215,23 @@ ${breadcrumbPrompt}`;
 
   if (pieceFormat === "image") {
     const imageBuffer = await generateImage(config, pieceContent);
-    await writeBinaryContent(path.join(pieceDir, `piece${ext}`), imageBuffer);
+
+    // Upload to Cloudinary if configured; fall back to local file
+    const dayName = path.basename(path.dirname(path.dirname(pieceDir)));
+    const cloudinaryUrl = await uploadToCloudinary(
+      imageBuffer,
+      `soul-evolution/${dayName}/${slug}`
+    );
+
+    if (cloudinaryUrl) {
+      await writeFileContent(
+        path.join(pieceDir, "image-url.txt"),
+        cloudinaryUrl
+      );
+    } else {
+      await writeBinaryContent(path.join(pieceDir, `piece${ext}`), imageBuffer);
+    }
+
     await writeFileContent(
       path.join(pieceDir, "prompt.md"),
       `# ${title}\n\n## Image Prompt\n\n${pieceContent}`
@@ -406,6 +424,9 @@ async function runDay(
 
   // Phase 3: Reflect
   const reflection = await phaseReflect(config, soul, dayDir, pieces);
+
+  // Post reflection to Twitter via Typefully
+  await postToTypefully(reflection, dayNumber);
 
   // Phase 4: Mutate
   const newSoul = await phaseMutate(

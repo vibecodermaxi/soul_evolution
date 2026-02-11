@@ -16,3 +16,9 @@ Thumbs.db
 
 # Env
 .env
+
+# Generated images (hosted on Cloudinary)
+journal/**/piece.png
+
+# Cron log
+cron.log

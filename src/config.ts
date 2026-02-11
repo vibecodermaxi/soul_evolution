@@ -16,11 +16,12 @@ export function getConfig(): Config {
     evolutionFile: path.join(PROJECT_ROOT, "journal", "EVOLUTION.md"),
     promptsDir: path.join(PROJECT_ROOT, "prompts"),
     siteDir: path.join(PROJECT_ROOT, "site"),
-    model: process.env.SOUL_MODEL ?? "anthropic/claude-sonnet-4-5",
-    imageModel: process.env.SOUL_IMAGE_MODEL ?? "google/gemini-2.5-flash-image",
+    model: process.env.SOUL_MODEL ?? "anthropic/claude-opus-4.6",
+    imageModel:
+      process.env.SOUL_IMAGE_MODEL ?? "google/gemini-3-pro-image-preview",
     maxTokens: parseInt(process.env.SOUL_MAX_TOKENS ?? "8192", 10),
     defaultPieces: parseInt(process.env.SOUL_PIECES_PER_DAY ?? "6", 10),
-    defaultInterval: parseInt(process.env.SOUL_INTERVAL_SECONDS ?? "3600", 10),
+    defaultInterval: parseInt(process.env.SOUL_INTERVAL_SECONDS ?? "7200", 10),
   };
 }
 

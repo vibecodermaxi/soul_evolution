@@ -477,7 +477,11 @@ async function renderArtPiece(
     const relPath = `${assetPrefix}${slug}/${fileName}`;
     const ext = path.extname(fileName);
 
-    if (ext === ".svg") {
+    if (fileName === "image-url.txt") {
+      // Cloudinary-hosted image: use the remote URL directly
+      const imageUrl = (await readFileContent(filePath)).trim();
+      contentHtml += `<div class="art-image"><img src="${imageUrl}" alt="${escapeHtml(title)}" loading="lazy"></div>`;
+    } else if (ext === ".svg") {
       const svgContent = await readFileContent(filePath);
       contentHtml += `<div class="art-svg">${svgContent}</div>`;
     } else if (ext === ".html") {
