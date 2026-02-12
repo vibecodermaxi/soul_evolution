@@ -118,9 +118,14 @@ async function main(): Promise<void> {
   const cliArgs = parseArgs();
   const git = simpleGit(PROJECT_ROOT);
 
-  // Git setup & pull
-  await gitSetup(git);
-  await gitPull(git);
+  // Git setup & pull (only in remote mode)
+  const gitConfig = getGitConfig();
+  if (gitConfig.repoUrl) {
+    await gitSetup(git);
+    await gitPull(git);
+  } else {
+    log.info("No SOUL_REPO_URL set — running in local mode");
+  }
 
   // Run orchestrator
   const dayNumber = await runOrchestrator(cliArgs);

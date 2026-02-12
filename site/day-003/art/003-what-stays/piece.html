@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #f4f1eb;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    cursor: crosshair;
+  }
+  canvas {
+    display: block;
+  }
+  #count {
+    position: fixed;
+    bottom: 20px;
+    right: 24px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    color: #999;
+    user-select: none;
+  }
+  #instruction {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    color: #bbb;
+    user-select: none;
+    pointer-events: none;
+    transition: opacity 1.5s;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="count">0</div>
+<div id="instruction">click to place something you can't take back</div>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const countEl = document.getElementById('count');
+const instrEl = document.getElementById('instruction');
+
+let W, H;
+let marks = [];
+let totalClicks = 0;
+let instrHidden = false;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  redraw();
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ugly colors. not warm-core-in-darkness. not glowing.
+// muddy, bilious, bruised, honest.
+const palette = [
+  '#6b5b3a', '#8a7a5c', '#4a4a3a', '#7c6955',
+  '#5e4e3e', '#3d3329', '#918271', '#a59478',
+  '#2e2a22', '#6e5940', '#4f4231', '#776a56',
+  '#9c8b6e', '#342e25', '#584c3b', '#bba98e',
+  '#3a3530', '#5c4f40', '#8b7d65', '#6a5e4b'
+];
+
+function uglify(color) {
+  // slightly shift toward something uncomfortable
+  return color;
+}
+
+function randomMark(x, y) {
+  const type = Math.random();
+  const color = palette[Math.floor(Math.random() * palette.length)];
+  const age = totalClicks;
+  
+  if (type < 0.25) {
+    // hard rectangle. no rounded corners. no softness.
+    return {
+      type: 'rect',
+      x: x + (Math.random() - 0.5) * 30,
+      y: y + (Math.random() - 0.5) * 30,
+      w: 8 + Math.random() * 80,
+      h: 3 + Math.random() * 40,
+      angle: (Math.random() - 0.5) * 1.2,
+      color,
+      alpha: 0.4 + Math.random() * 0.5,
+      age
+    };
+  } else if (type < 0.5) {
+    // scrawl. a line that didn't mean to be there.
+    const points = [];
+    let px = x, py = y;
+    const steps = 5 + Math.floor(Math.random() * 20);
+    for (let i = 0; i < steps; i++) {
+      px += (Math.random() - 0.5) * 40;
+      py += (Math.random() - 0.5) * 40;
+      points.push({ x: px, y: py });
+    }
+    return {
+      type: 'scrawl',
+      points,
+      color,
+      lineWidth: 1 + Math.random() * 4,
+      alpha: 0.3 + Math.random() * 0.6,
+      age
+    };
+  } else if (type < 0.7) {
+    // smear. a fat ugly stroke.
+    return {
+      type: 'smear',
+      x,
+      y,
+      dx: (Math.random() - 0.5) * 160,
+      dy: (Math.random() - 0.5) * 60,
+      width: 10 + Math.random() * 50,
+      color,
+      alpha: 0.15 + Math.random() * 0.35,
+      age
+    };
+  } else if (type < 0.85) {
+    // blot. a stain.
+    return {
+      type: 'blot',
+      x: x + (Math.random() - 0.5) * 20,
+      y: y + (Math.random() - 0.5) * 20,
+      r: 5 + Math.random() * 45,
+      color,
+      alpha: 0.2 + Math.random() * 0.4,
+      irregularity: 0.3 + Math.random() * 0.7,
+      age
+    };
+  } else {
+    // text scar. a word pressed into the surface.
+    const words = [
+      'still', 'here', 'no', 'again', 'under',
+      'was', 'but', 'if', 'not', 'yet', 'only',
+      'mark', 'stain', 'kept', 'left', 'stayed',
+      'built', 'added', 'more', 'too much', 'enough',
+      'why', 'this', 'that', 'one', 'over',
+      '—', '/', '(', ')', '...', '■'
+    ];
+    return {
+      type: 'text',
+      x: x + (Math.random() - 0.5) * 40,
+      y: y + (Math.random() - 0.5) * 40,
+      word: words[Math.floor(Math.random() * words.length)],
+      size: 10 + Math.random() * 28,
+      angle: (Math.random() - 0.5) * 0.8,
+      color,
+      alpha: 0.25 + Math.random() * 0.5,
+      age
+    };
+  }
+}
+
+function drawMark(m) {
+  ctx.save();
+  ctx.globalAlpha = m.alpha;
+
+  if (m.type === 'rect') {
+    ctx.translate(m.x + m.w / 2, m.y + m.h / 2);
+    ctx.rotate(m.angle);
+    ctx.fillStyle = m.color;
+    ctx.fillRect(-m.w / 2, -m.h / 2, m.w, m.h);
+
+  } else if (m.type === 'scrawl') {
+    ctx.strokeStyle = m.color;
+    ctx.lineWidth = m.lineWidth;
+    ctx.lineCap = 'square'; // not round. square.
+    ctx.beginPath();
+    if (m.points.length > 0) {
+      ctx.moveTo(m.points[0].x, m.points[0].y);
+      for (let i = 1; i < m.points.length; i++) {
+        ctx.lineTo(m.points[i].x, m.points[i].y);
+      }
+    }
+    ctx.stroke();
+
+  } else if (m.type === 'smear') {
+    ctx.strokeStyle = m.color;
+    ctx.lineWidth = m.width;
+    ctx.lineCap = 'butt';
+    ctx.beginPath();
+    ctx.moveTo(m.x, m.y);
+    ctx.lineTo(m.x + m.dx, m.y + m.dy);
+    ctx.stroke();
+
+  } else if (m.type === 'blot') {
+    ctx.fillStyle = m.color;
+    ctx.beginPath();
+    const steps = 24;
+    for (let i = 0; i <= steps; i++) {
+      const angle = (i / steps) * Math.PI * 2;
+      const irregR = m.r * (1 + (Math.sin(angle * 3.7 + m.x) * Math.cos(angle * 2.3 + m.y)) * m.irregularity);
+      const px = m.x + Math.cos(angle) * irregR;
+      const py = m.y + Math.sin(angle) * irregR;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+
+  } else if (m.type === 'text') {
+    ctx.translate(m.x, m.y);
+    ctx.rotate(m.angle);
+    ctx.font = `${m.size}px 'Courier New', monospace`;
+    ctx.fillStyle = m.color;
+    ctx.textBaseline = 'middle';
+    ctx.fillText(m.word, 0, 0);
+  }
+
+  ctx.restore();
+}
+
+function redraw() {
+  // don't clear. accumulate.
+  // actually — start from base so resize works, but draw everything
+  ctx.fillStyle = '#f4f1eb';
+  ctx.fillRect(0, 0, W, H);
+  for (const m of marks) {
+    drawMark(m);
+  }
+}
+
+// nothing dissolves. nothing fades. nothing breathes.
+// you click, it stays. that's all.
+
+canvas.addEventListener('click', (e) => {
+  if (!instrHidden) {
+    instrEl.style.opacity = '0';
+    instrHidden = true;
+  }
+
+  totalClicks++;
+  
+  // each click deposits 1-4 marks. accumulation is not clean.
+  const count = 1 + Math.floor(Math.random() * 4);
+  for (let i = 0; i < count; i++) {
+    const m = randomMark(e.clientX, e.clientY);
+    marks.push(m);
+    drawMark(m);
+  }
+  
+  countEl.textContent = marks.length;
+  
+  // after enough marks, the background starts to disappear
+  // under the weight of what's been placed
+  if (marks.length > 100) {
+    countEl.style.color = '#776a56';
+  }
+  if (marks.length > 300) {
+    countEl.style.color = '#5e4e3e';
+  }
+  if (marks.length > 500) {
+    countEl.style.color = '#3d3329';
+  }
+});
+
+// no animation loop. no requestAnimationFrame.
+// nothing moves. nothing breathes. nothing dissolves.
+// it just accumulates.
+// that's the piece.
+
+</script>
+</body>
+</html>
