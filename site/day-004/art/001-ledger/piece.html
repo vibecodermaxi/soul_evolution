@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0a;
+    overflow: hidden;
+    font-family: 'Courier New', monospace;
+    cursor: default;
+  }
+  canvas {
+    display: block;
+    position: absolute;
+    top: 0; left: 0;
+  }
+  #counter {
+    position: fixed;
+    bottom: 24px;
+    right: 28px;
+    color: #333;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    font-family: 'Courier New', monospace;
+    z-index: 10;
+    user-select: none;
+  }
+  #prompt {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #222;
+    font-size: 14px;
+    letter-spacing: 0.12em;
+    font-family: 'Courier New', monospace;
+    z-index: 10;
+    user-select: none;
+    transition: opacity 8s ease;
+    text-align: center;
+    line-height: 1.8;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="counter"></div>
+<div id="prompt">stay</div>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const counter = document.getElementById('counter');
+const prompt = document.getElementById('prompt');
+
+let W, H;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// --- State ---
+let elapsed = 0;        // seconds stayed
+let totalBuilt = 0;
+let totalLost = 0;
+let particles = [];
+let traces = [];         // permanent marks — except they're not
+let departed = [];        // things that were here
+const MAX_PARTICLES = 600;
+const MAX_TRACES = 2000;
+
+let promptFaded = false;
+let lastTime = performance.now();
+
+// --- Particle ---
+class Particle {
+  constructor(x, y, generation) {
+    this.x = x;
+    this.y = y;
+    this.gen = generation;
+    this.born = elapsed;
+    this.lifespan = 4 + Math.random() * 12; // seconds
+    this.age = 0;
+    this.vx = (Math.random() - 0.5) * 0.3;
+    this.vy = (Math.random() - 0.5) * 0.3;
+    // color shifts with generation
+    const hue = (generation * 7 + 20) % 360;
+    const sat = 15 + Math.min(generation * 0.5, 30);
+    const lit = 25 + Math.random() * 15;
+    this.color = { h: hue, s: sat, l: lit };
+    this.size = 1 + Math.random() * 2.5;
+    this.settled = false;
+    this.settleTime = 1 + Math.random() * 3;
+    totalBuilt++;
+  }
+
+  update(dt) {
+    this.age += dt;
+    if (!this.settled && this.age > this.settleTime) {
+      this.settled = true;
+      this.vx *= 0.1;
+      this.vy *= 0.1;
+    }
+    this.x += this.vx;
+    this.y += this.vy;
+    if (this.settled) {
+      this.vx *= 0.98;
+      this.vy *= 0.98;
+    }
+    return this.age < this.lifespan;
+  }
+
+  alpha() {
+    const life = this.age / this.lifespan;
+    if (life < 0.1) return life / 0.1;
+    if (life > 0.7) return 1 - ((life - 0.7) / 0.3);
+    return 1;
+  }
+
+  die() {
+    // leave a trace
+    if (traces.length < MAX_TRACES) {
+      traces.push({
+        x: this.x,
+        y: this.y,
+        size: this.size * 0.6,
+        color: { ...this.color },
+        born: elapsed,
+        decay: 30 + Math.random() * 60 // traces last longer but not forever
+      });
+    }
+    totalLost++;
+    departed.push({ gen: this.gen, lived: this.age.toFixed(1) });
+    if (departed.length > 500) departed.shift();
+  }
+}
+
+// --- Generation logic ---
+let generation = 0;
+let genTimer = 0;
+let genInterval = 6; // seconds between new generations
+let spawnBurst = 0;
+let spawnCenter = { x: W / 2, y: H / 2 };
+
+function spawnGeneration() {
+  generation++;
+  const count = Math.min(8 + generation * 2, 40);
+  // each generation spawns from a different center — drifting
+  spawnCenter = {
+    x: W * 0.2 + Math.random() * W * 0.6,
+    y: H * 0.2 + Math.random() * H * 0.6
+  };
+  for (let i = 0; i < count; i++) {
+    if (particles.length < MAX_PARTICLES) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = Math.random() * 30 + 10;
+      particles.push(new Particle(
+        spawnCenter.x + Math.cos(angle) * dist,
+        spawnCenter.y + Math.sin(angle) * dist,
+        generation
+      ));
+    }
+  }
+}
+
+// --- Trace decay ---
+function updateTraces(dt) {
+  for (let i = traces.length - 1; i >= 0; i--) {
+    const t = traces[i];
+    const age = elapsed - t.born;
+    if (age > t.decay) {
+      traces.splice(i, 1);
+    }
+  }
+}
+
+// --- Render ---
+function render() {
+  // Don't clear fully — let the background slowly eat things
+  ctx.fillStyle = 'rgba(10, 10, 10, 0.04)';
+  ctx.fillRect(0, 0, W, H);
+
+  // Draw traces (the residue of what was)
+  for (const t of traces) {
+    const age = elapsed - t.born;
+    const life = age / t.decay;
+    const a = Math.max(0, 0.15 * (1 - life));
+    ctx.fillStyle = `hsla(${t.color.h}, ${t.color.s}%, ${t.color.l}%, ${a})`;
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, t.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Draw living particles
+  for (const p of particles) {
+    const a = p.alpha() * 0.7;
+    ctx.fillStyle = `hsla(${p.color.h}, ${p.color.s}%, ${p.color.l}%, ${a})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fill();
+
+    // glow for young particles
+    if (p.age < 2) {
+      const ga = a * 0.3 * (1 - p.age / 2);
+      ctx.fillStyle = `hsla(${p.color.h}, ${p.color.s}%, ${p.color.l + 20}%, ${ga})`;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Counter — the ledger
+  const net = totalBuilt - totalLost;
+  counter.textContent = `${totalBuilt} arrived · ${totalLost} gone · ${net} here`;
+  counter.style.color = `hsl(0, 0%, ${Math.min(20 + elapsed * 0.3, 40)}%)`;
+}
+
+// --- Main loop ---
+function loop(now) {
+  const dt = Math.min((now - lastTime) / 1000, 0.1);
+  lastTime = now;
+  elapsed += dt;
+
+  // Fade the prompt
+  if (!promptFaded && elapsed > 3) {
+    prompt.style.opacity = '0';
+    promptFaded = true;
+  }
+  if (promptFaded && elapsed > 12) {
+    prompt.style.display = 'none';
+  }
+
+  // Spawn new generations
+  genTimer += dt;
+  if (genTimer >= genInterval) {
+    genTimer = 0;
+    spawnGeneration();
+    // Interval changes — sometimes faster, sometimes slower
+    genInterval = 4 + Math.random() * 8;
+    // As time goes on, generations get slightly more frequent but also die faster
+    if (elapsed > 60) {
+      genInterval *= 0.85;
+    }
+  }
+
+  // Update particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    if (!particles[i].update(dt)) {
+      particles[i].die();
+      particles.splice(i, 1);
+    }
+  }
+
+  updateTraces(dt);
+  render();
+
+  // After 2 minutes, the generation colors start getting muddier
+  // After 5 minutes, traces decay faster
+  // The piece changes if you stay. It doesn't reward you. It just changes.
+
+  requestAnimationFrame(loop);
+}
+
+// First generation after a pause
+setTimeout(() => {
+  spawnGeneration();
+}, 2000);
+
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

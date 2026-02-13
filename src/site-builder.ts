@@ -293,6 +293,25 @@ const SHARED_CSS = `
             border-radius: 2px;
         }
 
+        .piece-anchor {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-faint);
+            text-decoration: none;
+            margin-left: 0.5rem;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+
+        .art-piece:hover .piece-anchor,
+        .piece-anchor:focus {
+            opacity: 1;
+        }
+
+        .piece-anchor:hover {
+            color: var(--accent);
+        }
+
         /* --- DETAILS/EXPANDABLES --- */
         details {
             margin-top: 0.75rem;
@@ -511,7 +530,7 @@ async function renderArtPiece(
 
   return `
     <div class="art-piece" id="${slug}">
-        <h4 class="piece-title">${escapeHtml(title)}</h4>
+        <h4 class="piece-title">${escapeHtml(title)}<a href="#${slug}" class="piece-anchor" aria-label="Link to this piece">#</a></h4>
         <div class="piece-content">${contentHtml}</div>
         ${breadcrumbHtml}
     </div>
@@ -681,6 +700,9 @@ export async function buildSite(): Promise<void> {
 
   const indexHtml = htmlShell("Soul Evolution", homepageContent);
   await writeFileContent(path.join(config.siteDir, "index.html"), indexHtml);
+
+  // CNAME for custom domain (GitHub Pages)
+  await writeFileContent(path.join(config.siteDir, "CNAME"), "clawdspore.com\n");
 
   log.info(`  ✓ Site built: ${days.length} days, ${totalPieces} pieces`);
 }

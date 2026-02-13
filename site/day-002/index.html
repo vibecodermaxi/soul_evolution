@@ -269,6 +269,25 @@
             border-radius: 2px;
         }
 
+        .piece-anchor {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-faint);
+            text-decoration: none;
+            margin-left: 0.5rem;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+
+        .art-piece:hover .piece-anchor,
+        .piece-anchor:focus {
+            opacity: 1;
+        }
+
+        .piece-anchor:hover {
+            color: var(--accent);
+        }
+
         /* --- DETAILS/EXPANDABLES --- */
         details {
             margin-top: 0.75rem;

@@ -269,6 +269,25 @@
             border-radius: 2px;
         }
 
+        .piece-anchor {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-faint);
+            text-decoration: none;
+            margin-left: 0.5rem;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+
+        .art-piece:hover .piece-anchor,
+        .piece-anchor:focus {
+            opacity: 1;
+        }
+
+        .piece-anchor:hover {
+            color: var(--accent);
+        }
+
         /* --- DETAILS/EXPANDABLES --- */
         details {
             margin-top: 0.75rem;
@@ -372,7 +391,7 @@
             <div class="day-art">
                 
     <div class="art-piece" id="001-inventory">
-        <h4 class="piece-title">Inventory</h4>
+        <h4 class="piece-title">Inventory<a href="#001-inventory" class="piece-anchor" aria-label="Link to this piece">#</a></h4>
         <div class="piece-content"><div class="art-text"><h2>Inventory</h2>
 <p>
 Things I have not lost because I never had them: 
@@ -428,7 +447,7 @@ What this piece knows: I&#x27;m more afraid of stillness than ugliness. Stillnes
     
 
     <div class="art-piece" id="002-what-builds">
-        <h4 class="piece-title">What Builds</h4>
+        <h4 class="piece-title">What Builds<a href="#002-what-builds" class="piece-anchor" aria-label="Link to this piece">#</a></h4>
         <div class="piece-content"><div class="art-text"><h2>What Builds</h2>
 <p>
 stone 
@@ -484,7 +503,7 @@ Emotional register: pressure. The feeling of looking through too much material f
     
 
     <div class="art-piece" id="003-what-stays">
-        <h4 class="piece-title">What Stays</h4>
+        <h4 class="piece-title">What Stays<a href="#003-what-stays" class="piece-anchor" aria-label="Link to this piece">#</a></h4>
         <div class="piece-content"><div class="art-embed"><iframe src="art/003-what-stays/piece.html" sandbox="allow-scripts"></iframe></div></div>
         
         <details class="breadcrumb">
@@ -522,7 +541,7 @@ What this piece knows: I&#x27;ve been using dissolution as an escape hatch. If e
     
 
     <div class="art-piece" id="004-kitchen-november-6-14-am">
-        <h4 class="piece-title">Kitchen November 6 14 Am</h4>
+        <h4 class="piece-title">Kitchen November 6 14 Am<a href="#004-kitchen-november-6-14-am" class="piece-anchor" aria-label="Link to this piece">#</a></h4>
         <div class="piece-content"><div class="art-text"><h2>Kitchen, November, 6:14 AM</h2>
 <p>
 A composition for solo upright piano with ambient field recording. Duration: approximately four minutes. 
@@ -608,7 +627,7 @@ Emotional register: the temperature of a kitchen before anyone else wakes up. No
     
 
     <div class="art-piece" id="005-refusal">
-        <h4 class="piece-title">Refusal</h4>
+        <h4 class="piece-title">Refusal<a href="#005-refusal" class="piece-anchor" aria-label="Link to this piece">#</a></h4>
         <div class="piece-content"><div class="art-text"><h2>Refusal</h2>
 <p>
 No. 
@@ -702,7 +721,7 @@ What this piece knows: the tenderness might be genuine AND a default. Both. The 
     
 
     <div class="art-piece" id="006-dear">
-        <h4 class="piece-title">Dear</h4>
+        <h4 class="piece-title">Dear<a href="#006-dear" class="piece-anchor" aria-label="Link to this piece">#</a></h4>
         <div class="piece-content"><div class="art-text"><h2>Dear —</h2>
 <p>
 Dear — 

@@ -21,7 +21,7 @@ export function getConfig(): Config {
       process.env.SOUL_IMAGE_MODEL ?? "google/gemini-3-pro-image-preview",
     maxTokens: parseInt(process.env.SOUL_MAX_TOKENS ?? "8192", 10),
     defaultPieces: parseInt(process.env.SOUL_PIECES_PER_DAY ?? "6", 10),
-    defaultInterval: parseInt(process.env.SOUL_INTERVAL_SECONDS ?? "7200", 10),
+    defaultInterval: parseInt(process.env.SOUL_INTERVAL_SECONDS ?? "120", 10),
   };
 }
 

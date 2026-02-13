@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    background: #1a1a18;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    cursor: crosshair;
+  }
+  
+  canvas {
+    display: block;
+  }
+  
+  #time {
+    position: fixed;
+    bottom: 14px;
+    right: 18px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: #5a5a50;
+    letter-spacing: 0.05em;
+    z-index: 10;
+  }
+  
+  #prompt {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: Georgia, serif;
+    font-size: 14px;
+    color: #4a4a42;
+    letter-spacing: 0.15em;
+    z-index: 10;
+    transition: opacity 3s ease;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="time"></div>
+<div id="prompt">place something</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const timeEl = document.getElementById('time');
+const promptEl = document.getElementById('prompt');
+
+let W, H;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// The room. A collection of things placed by a person.
+// Each thing is a small life. It has a color, a shape, a behavior.
+// Things don't leave. They accumulate. They interact with neighbors.
+// The room gets fuller. The relationships get denser.
+
+const things = [];
+let totalPlaced = 0;
+let startTime = Date.now();
+let firstPlaced = false;
+
+// Palette: not warm-core-in-darkness. Mud, ochre, bruise, milk, rust.
+// Unbeautiful. Inhabited.
+const palettes = [
+  { fill: '#8B7355', stroke: '#6B5335', name: 'wood' },
+  { fill: '#9B8B6B', stroke: '#7B6B4B', name: 'dust' },
+  { fill: '#6B5D4E', stroke: '#4B3D2E', name: 'earth' },
+  { fill: '#A09080', stroke: '#807060', name: 'stone' },
+  { fill: '#785840', stroke: '#583820', name: 'rust' },
+  { fill: '#8B8070', stroke: '#6B6050', name: 'ash' },
+  { fill: '#706050', stroke: '#504030', name: 'shadow' },
+  { fill: '#9B9585', stroke: '#7B7565', name: 'bone' },
+  { fill: '#6B6858', stroke: '#4B4838', name: 'moss' },
+  { fill: '#887766', stroke: '#685546', name: 'clay' },
+  { fill: '#5C4A3A', stroke: '#3C2A1A', name: 'walnut' },
+  { fill: '#A89880', stroke: '#887860', name: 'linen' },
+  { fill: '#7B6B8B', stroke: '#5B4B6B', name: 'bruise' },
+  { fill: '#8B7B6B', stroke: '#6B5B4B', name: 'bread' },
+  { fill: '#94887B', stroke: '#74685B', name: 'fog' },
+];
+
+// Shape types — irregular, handmade-feeling
+const shapeTypes = [
+  'lump', 'stack', 'lean', 'spread', 'cluster', 'tall', 'squat'
+];
+
+class Thing {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.birthTime = Date.now();
+    this.palette = palettes[Math.floor(Math.random() * palettes.length)];
+    this.shape = shapeTypes[Math.floor(Math.random() * shapeTypes.length)];
+    this.size = 12 + Math.random() * 25;
+    this.angle = (Math.random() - 0.5) * 0.4;
+    this.settled = false;
+    this.settleY = y;
+    this.velocityY = 0;
+    this.connections = [];
+    this.weight = 0.5 + Math.random() * 1.5;
+    this.wobble = Math.random() * Math.PI * 2;
+    this.wobbleSpeed = 0.005 + Math.random() * 0.015;
+    this.warmth = 0; // grows near other things
+    this.id = totalPlaced;
+    
+    // Each thing has a subtle motion — not dissolution. Settling.
+    this.restlessness = 1.0; // decreases over time. things calm down.
+    
+    // Points for the irregular shape
+    this.points = this.generateShape();
+  }
+  
+  generateShape() {
+    const pts = [];
+    let numPts;
+    let baseRadius = this.size;
+    
+    switch(this.shape) {
+      case 'lump':
+        numPts = 7 + Math.floor(Math.random() * 4);
+        for (let i = 0; i < numPts; i++) {
+          const a = (i / numPts) * Math.PI * 2;
+          const r = baseRadius * (0.6 + Math.random() * 0.5);
+          pts.push({ x: Math.cos(a) * r, y: Math.sin(a) * r * 0.7 });
+        }
+        break;
+      case 'stack':
+        // Two or three overlapping forms
+        numPts = 10;
+        for (let i = 0; i < numPts; i++) {
+          const a = (i / numPts) * Math.PI * 2;
+          const r = baseRadius * (0.4 + Math.random() * 0.3);
+          const yOff = Math.sin(a * 2) * baseRadius * 0.3;
+          pts.push({ x: Math.cos(a) * r, y: Math.sin(a) * r * 1.3 + yOff });
+        }
+        break;
+      case 'lean':
+        numPts = 6;
+        for (let i = 0; i < numPts; i++) {
+          const a = (i / numPts) * Math.PI * 2;
+          const r = baseRadius * (0.5 + Math.random() * 0.4);
+          const lean = (Math.sin(a) > 0 ? 1 : -1) * baseRadius * 0.2;
+          pts.push({ x: Math.cos(a) * r * 0.6 + lean, y: Math.sin(a) * r * 1.2 });
+        }
+        break;
+      case 'spread':
+        numPts = 8;
+        for (let i = 0; i < numPts; i++) {
+          const a = (i / numPts) * Math.PI * 2;
+          const r = baseRadius * (0.7 + Math.random() * 0.5);
+          pts.push({ x: Math.cos(a) * r * 1.4, y: Math.sin(a) * r * 0.5 });
+        }
+        break;
+      case 'cluster':
+        numPts = 12;
+        for (let i = 0; i < numPts; i++) {
+          const a = (i / numPts) * Math.PI * 2;
+          const r = baseRadius * (0.3 + Math.random() * 0.6);
+          pts.push({ x: Math.cos(a) * r + (Math.random()-0.5)*6, y: Math.sin(a) * r + (Math.random()-0.5)*6 });
+        }
+        break;
+      case 'tall':
+        numPts = 8;
+        for (let i = 0; i < numPts; i++) {
+          const a = (i / numPts) * Math.PI * 2;
+          const r = baseRadius * (0.5 + Math.random() * 0.3);
+          pts.push({ x: Math.cos(a) * r * 0.5, y: Math.sin(a) * r * 1.6 });
+        }
+        break;
+      case 'squat':
+        numPts = 9;
+        for (let i = 0; i < numPts; i++) {
+          const a = (i / numPts) * Math.PI * 2;
+          const r = baseRadius * (0.6 + Math.random() * 0.4);
+          pts.push({ x: Math.cos(a) * r * 1.2, y: Math.sin(a) * r * 0.4 });
+        }
+        break;
+    }
+    return pts;
+  }
+  
+  update(allThings, time) {
+    const age = (Date.now() - this.birthTime) / 1000;
+    
+    // Restlessness decreases — things settle. They don't dissolve.
+    this.restlessness = Math.max(0.02, 1.0 / (1 + age * 0.1));
+    
+    // Wobble — alive, not fading
+    this.wobble += this.wobbleSpeed * this.restlessness;
+    
+    // Calculate warmth from neighbors
+    this.warmth = 0;
+    this.connections = [];
+    for (const other of allThings) {
+      if (other.id === this.id) continue;
+      const dx = other.x - this.x;
+      const dy = other.y - this.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const threshold = (this.size + other.size) * 2.5;
+      if (dist < threshold) {
+        const strength = 1 - (dist / threshold);
+        this.warmth += strength;
+        this.connections.push({ other, strength, dist });
+      }
+    }
+    
+    // Things very slightly gravitate toward each other. Accumulation.
+    // Not merging. Just... leaning closer.
+    for (const conn of this.connections) {
+      if (conn.dist > (this.size + conn.other.size) * 1.2) {
+        const dx = conn.other.x - this.x;
+        const dy = conn.other.y - this.y;
+        this.x += dx * 0.00003 * conn.strength;
+        this.y += dy * 0.00003 * conn.strength;
+      }
+    }
+  }
+  
+  draw(ctx, time) {
+    const age = (Date.now() - this.birthTime) / 1000;
+    
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.angle + Math.sin(this.wobble) * 0.02 * this.restlessness);
+    
+    // The thing itself
+    ctx.beginPath();
+    const pts = this.points;
+    
+    // Subtle breathing of the shape — but it doesn't shrink. It just shifts.
+    const breathAmt = this.restlessness * 0.03;
+    
+    ctx.moveTo(
+      pts[0].x * (1 + Math.sin(this.wobble) * breathAmt),
+      pts[0].y * (1 + Math.cos(this.wobble) * breathAmt)
+    );
+    
+    for (let i = 1; i <= pts.length; i++) {
+      const curr = pts[i % pts.length];
+      const next = pts[(i + 1) % pts.length];
+      const cpX = curr.x * (1 + Math.sin(this.wobble + i) * breathAmt);
+      const cpY = curr.y * (1 + Math.cos(this.wobble + i) * breathAmt);
+      
+      if (next) {
+        const endX = (cpX + next.x * (1 + Math.sin(this.wobble + i + 1) * breathAmt)) / 2;
+        const endY = (cpY + next.y * (1 + Math.cos(this.wobble + i + 1) * breathAmt)) / 2;
+        ctx.quadraticCurveTo(cpX, cpY, endX, endY);
+      } else {
+        ctx.quadraticCurveTo(cpX, cpY, pts[0].x, pts[0].y);
+      }
+    }
+    
+    ctx.closePath();
+    
+    // Fill gets slightly warmer/lighter with more neighbors
+    const warmShift = Math.min(this.warmth * 8, 30);
+    const baseColor = this.palette.fill;
+    const r = parseInt(baseColor.slice(1,3), 16);
+    const g = parseInt(baseColor.slice(3,5), 16);
+    const b = parseInt(baseColor.slice(5,7), 16);
+    
+    const fillR = Math.min(255, r + warmShift);
+    const fillG = Math.min(255, g + warmShift * 0.6);
+    const fillB = Math.min(255, b + warmShift * 0.2);
+    
+    ctx.fillStyle = `rgba(${fillR}, ${fillG}, ${fillB}, ${0.7 + Math.min(age * 0.02, 0.25)})`;
+    ctx.fill();
+    
+    ctx.strokeStyle = this.palette.stroke;
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.5 + Math.min(age * 0.03, 0.4);
+    ctx.stroke();
+    
+    ctx.restore();
+  }
+  
+  drawConnections(ctx) {
+    for (const conn of this.connections) {
+      if (conn.other.id > this.id) continue; // draw each connection once
+      
+      ctx.beginPath();
+      ctx.moveTo(this.x, this.y);
+      
+      // Connection line — not straight. A slight sag.
+      const midX = (this.x + conn.other.x) / 2;
+      const midY = (this.y + conn.other.y) / 2 + conn.dist * 0.08;
+      
+      ctx.quadraticCurveTo(midX, midY, conn.other.x, conn.other.y);
+      
+      ctx.strokeStyle = `rgba(120, 110, 95, ${conn.strength * 0.15})`;
+      ctx.lineWidth = conn.strength * 2;
+      ctx.stroke();
+    }
+  }
+}
+
+// Shadow / ground plane for each thing
+function drawShadow(ctx, thing) {
+  ctx.save();
+  ctx.translate(thing.x + 3, thing.y + thing.size * 0.4);
+  ctx.scale(1, 0.3);
+  ctx.beginPath();
+  ctx.arc(0, 0, thing.size * 0.8, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(10, 10, 8, 0.12)';
+  ctx.fill();
+  ctx.restore();
+}
+
+// Click to place
+canvas.addEventListener('click', (e) => {
+  if (!firstPlaced) {
+    promptEl.style.opacity = '0';
+    firstPlaced = true;
+  }
+  
+  const thing = new Thing(e.clientX, e.clientY);
+  things.push(thing);
+  totalPlaced++;
+});
+
+// Gentle background texture — not black. Dark warm ground.
+function drawGround(ctx) {
+  // Very subtle grain that accumulates slightly with more things
+  const density = Math.min(things.length * 0.5, 20);
+  for (let i = 0; i < density; i++) {
+    const x = Math.random() * W;
+    const y = Math.random() * H;
+    ctx.fillStyle = `rgba(${25 + Math.random()*8}, ${24 + Math.random()*6}, ${20 + Math.random()*5}, 0.02)`;
+    ctx.fillRect(x, y, 1 + Math.random() * 2, 1 + Math.random() * 2);
+  }
+}
+
+function formatTime(ms) {
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}:${sec.toString().padStart(2, '0')}`;
+}
+
+function draw() {
+  const now = Date.now();
+  const elapsed = now - startTime;
+  
+  // Don't clear. Layer. The background slowly warms.
+  // Actually — let's compromise. Mostly clear, but leave a trace.
+  ctx.fillStyle = 'rgba(26, 26, 24, 0.85)';
+  ctx.fillRect(0, 0, W, H);
+  
+  drawGround(ctx);
+  
+  // Update all things
+  for (const thing of things) {
+    thing.update(things, now);
+  }
+  
+  // Draw connections first (behind)
+  for (const thing of things) {
+    thing.drawConnections(ctx);
+  }
+  
+  // Draw shadows
+  for (const thing of things) {
+    drawShadow(ctx, thing);
+  }
+  
+  // Draw things
+  for (const thing of things) {
+    thing.draw(ctx, now);
+  }
+  
+  // Time display
+  if (firstPlaced) {
+    timeEl.textContent = `${things.length} thing${things.length !== 1 ? 's' : ''} · ${formatTime(elapsed)}`;
+  }
+  
+  requestAnimationFrame(draw);
+}
+
+draw();
+</script>
+</body>
+</html>

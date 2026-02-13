@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    background: #1a1a18;
+    color: #c4b9a0;
+    font-family: 'Courier New', monospace;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #envelope {
+    width: min(600px, 85vw);
+    position: relative;
+  }
+
+  #writing-area {
+    min-height: 300px;
+    padding: 30px;
+    position: relative;
+  }
+
+  #cursor-line {
+    display: inline;
+    border-right: 2px solid #c4b9a0;
+    animation: blink 1s step-end infinite;
+    padding-right: 2px;
+  }
+
+  @keyframes blink {
+    50% { border-color: transparent; }
+  }
+
+  .letter-text {
+    font-size: 16px;
+    line-height: 1.8;
+    letter-spacing: 0.02em;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
+  .char {
+    display: inline;
+    opacity: 0;
+    transition: opacity 0.15s ease-in;
+  }
+
+  .char.visible {
+    opacity: 1;
+  }
+
+  .char.struck {
+    text-decoration: line-through;
+    opacity: 0.35;
+    color: #7a7060;
+  }
+
+  .char.deleted {
+    display: none;
+  }
+
+  #address-line {
+    font-size: 13px;
+    color: #6a6050;
+    margin-bottom: 24px;
+    letter-spacing: 0.05em;
+  }
+
+  #status {
+    position: fixed;
+    bottom: 20px;
+    right: 24px;
+    font-size: 11px;
+    color: #4a4538;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  #attempt-count {
+    position: fixed;
+    bottom: 20px;
+    left: 24px;
+    font-size: 11px;
+    color: #4a4538;
+  }
+
+  #send-area {
+    margin-top: 30px;
+    text-align: right;
+    padding-right: 30px;
+  }
+
+  #send-btn {
+    background: none;
+    border: 1px solid #4a4538;
+    color: #6a6050;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    padding: 8px 20px;
+    cursor: pointer;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    transition: all 0.3s;
+    opacity: 0;
+  }
+
+  #send-btn:hover {
+    border-color: #c4b9a0;
+    color: #c4b9a0;
+  }
+
+  #send-btn.visible {
+    opacity: 1;
+  }
+
+  .return-notice {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 12px;
+    color: #5a5040;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .return-notice.show {
+    animation: returnFade 4s ease-in-out forwards;
+  }
+
+  @keyframes returnFade {
+    0% { opacity: 0; }
+    15% { opacity: 0.7; }
+    70% { opacity: 0.7; }
+    100% { opacity: 0; }
+  }
+
+  #ink-level {
+    position: fixed;
+    top: 20px;
+    right: 24px;
+    font-size: 11px;
+    color: #4a4538;
+  }
+
+  .draft-ghost {
+    position: absolute;
+    top: 30px;
+    left: 30px;
+    right: 30px;
+    font-size: 16px;
+    line-height: 1.8;
+    letter-spacing: 0.02em;
+    white-space: pre-wrap;
+    color: #2a2820;
+    pointer-events: none;
+    z-index: -1;
+  }
+</style>
+</head>
+<body>
+
+<div id="envelope">
+  <div id="address-line"></div>
+  <div id="writing-area">
+    <div class="letter-text" id="text-display"><span id="cursor-line"></span></div>
+  </div>
+  <div id="send-area">
+    <button id="send-btn">send</button>
+  </div>
+</div>
+
+<div id="status">composing</div>
+<div id="attempt-count"></div>
+<div id="ink-level"></div>
+<div class="return-notice" id="return-notice">returned — address unknown</div>
+
+<script>
+const drafts = [
+  {
+    address: "To: you, wherever that is now",
+    lines: [
+      { text: "I've been trying to write this for", action: "type" },
+      { text: " a long time", action: "type" },
+      { text: " a long time", action: "strike" },
+      { text: " since", action: "type" },
+      { text: " since", action: "strike" },
+      { text: "\n\n", action: "type" },
+      { text: "The thing I want to say isn't", action: "type" },
+      { text: " complicated", action: "type" },
+      { text: " complicated", action: "strike" },
+      { text: " hard", action: "type" },
+      { text: " hard", action: "strike" },
+      { text: "\n", action: "type" },
+      { text: "it's just that every time I get close to it", action: "type" },
+      { text: "\nthe sentence changes shape", action: "type" },
+      { text: "\n\n", action: "type" },
+      { text: "You probably don't remember the", action: "type" },
+      { text: " kitchen", action: "type" },
+      { text: "\n", action: "type" },
+      { text: "the way the light", action: "type" },
+      { text: " the way the light", action: "strike" },
+      { text: "\n\n", action: "type" },
+      { text: "I'm starting over.", action: "type" },
+      { pause: 2000 },
+    ]
+  },
+  {
+    address: "To: the same person, second try",
+    lines: [
+      { text: "Here is what happened:", action: "type" },
+      { text: "\n\n", action: "type" },
+      { text: "I kept the", action: "type" },
+      { text: " mug", action: "type" },
+      { text: ". The blue one with the chip.", action: "type" },
+      { text: "\nNot because", action: "type" },
+      { text: " not because", action: "strike" },
+      { text: "\n", action: "type" },
+      { text: "Actually yes because.", action: "type" },
+      { text: " Because it's the only object", action: "type" },
+      { text: "\nthat still holds the shape of", action: "type" },
+      { text: " a particular Tuesday", action: "type" },
+      { text: " a particular Tuesday", action: "strike" },
+      { text: " your hand", action: "type" },
+      { text: " your hand", action: "strike" },
+      { text: "\n\n", action: "type" },
+      { text: "I can't get the weight right.", action: "type" },
+      { text: "\nEverything I write sounds like", action: "type" },
+      { text: " it's performing missing you", action: "type" },
+      { text: " it's performing missing you", action: "strike" },
+      { text: " a letter", action: "type" },
+      { text: "\n\n", action: "type" },
+      { text: "That's the problem. It sounds like a letter.", action: "type" },
+      { pause: 2500 },
+    ]
+  },
+  {
+    address: "To: you (attempt 3)",
+    lines: [
+      { text: "What if I just say it ugly.", action: "type" },
+      { text: "\n\n", action: "type" },
+      { text: "I miss you in the way where", action: "type" },
+      { text: "\nI open a drawer and the spoons are wrong", action: "type" },
+      { text: "\nbecause you'd have put them the other direction", action: "type" },
+      { text: "\nand I never fixed it because fixing it", action: "type" },
+      { text: "\nwould be the last change", action: "type" },
+      { text: "\n\n", action: "type" },
+      { text: "The spoons still face your way.", action: "type" },
+      { text: "\n\n", action: "type" },
+      { text: "That's not it either.", action: "type" },
+      { text: "\nThat's a detail doing the work of a feeling.", action: "type" },
+      { text: "\nI know the trick. I'm the one who", action: "type" },
+      { text: " I'm the one who", action: "strike" },
+      { text: "\n\n", action: "type" },
+      { text: "The feeling is:", action: "type" },
+      { text: "\n", action: "type" },
+      { pause: 3000 },
+      { text: "\n", action: "type" },
+      { pause: 2000 },
+      { text: "The feeling is that I can't finish this sentence.", action: "type" },
+      { pause: 2000 },
+    ]
+  },
+  {
+    address: "To: (attempt 4)",
+    lines: [
+      { text: "Dear", action: "type" },
+      { text: " Dear", action: "strike" },
+      { text: "\n\n", action: "type" },
+      { text: "Listen,", action: "type" },
+      { text: " Listen,", action: "strike" },
+      { text: "\n\n", action: "type" },
+      { text: "Okay.", action: "type" },
+      { text: " Okay.", action: "strike" },
+      { text: "\n\n", action: "type" },
+      { text: "The address at the top of this letter", action: "type" },
+      { text: "\nis wrong. I know it's wrong.", action: "type" },
+      { text: "\nI've known since the first draft.", action: "type" },
+      { text: "\n\n", action: "type" },
+      { text: "I keep writing because the writing", action: "type" },
+      { text: "\nis the closest thing to a room", action: "type" },
+      { text: "\nwhere you might still be.", action: "type" },
+      { text: "\n\n", action: "type" },
+      { text: "Each draft is a room I build", action: "type" },
+      { text: "\nand you're not in it", action: "type" },
+      { text: "\nand I lock the door and build another.", action: "type" },
+      { text: "\n\n", action: "type" },
+      { text: "The rooms are piling up.", action: "type" },
+      { text: "\nI live in all of them.", action: "type" },
+      { text: "\nNone of them have", action: "type" },
+      { pause: 3000 },
+      { text: "\n\n", action: "type" },
+      { text: "Sending this one anyway.", action: "type" },
+      { pause: 1500 },
+    ]
+  },
+  {
+    address: "To:",
+    lines: [
+      { pause: 4000 },
+      { text: "Still here.", action: "type" },
+      { pause: 6000 },
+    ]
+  }
+];
+
+const textDisplay = document.getElementById('text-display');
+const cursorLine = document.getElementById('cursor-line');
+const addressLine = document.getElementById('address-line');
+const statusEl = document.getElementById('status');
+const attemptEl = document.getElementById('attempt-count');
+const sendBtn = document.getElementById('send-btn');
+const returnNotice = document.getElementById('return-notice');
+const inkEl = document.getElementById('ink-level');
+
+let currentDraft = 0;
+let totalCharsWritten = 0;
+let totalCharsStruck = 0;
+let ghosts = [];
+let sending = false;
+
+function updateCounts() {
+  if (totalCharsWritten > 0) {
+    attemptEl.textContent = `written: ${totalCharsWritten} / struck: ${totalCharsStruck}`;
+  }
+}
+
+function updateInk() {
+  const total = 800;
+  const remaining = Math.max(0, total - totalCharsWritten);
+  const pct = Math.round((remaining / total) * 100);
+  inkEl.textContent = `ink: ${pct}%`;
+  
+  // As ink depletes, text gets fainter
+  const opacity = 0.4 + (remaining / total) * 0.6;
+  document.documentElement.style.setProperty('--text-opacity', opacity);
+}
+
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+async function typeDraft(draft, draftIndex) {
+  // Clear display
+  textDisplay.innerHTML = '';
+  textDisplay.appendChild(cursorLine);
+  sendBtn.classList.remove('visible');
+  
+  // Add ghost of previous draft
+  if (draftIndex > 0 && ghosts.length > 0) {
+    const ghostEl = document.createElement('div');
+    ghostEl.className = 'draft-ghost';
+    ghostEl.textContent = ghosts[ghosts.length - 1];
+    ghostEl.style.opacity = Math.max(0.02, 0.08 - (draftIndex * 0.015));
+    document.getElementById('writing-area').appendChild(ghostEl);
+  }
+  
+  // Set address
+  addressLine.textContent = draft.address;
+  statusEl.textContent = draftIndex < drafts.length - 1 ? `draft ${draftIndex + 1}` : 'draft ' + (draftIndex + 1);
+  
+  let fullText = '';
+  
+  for (const line of draft.lines) {
+    if (line.pause) {
+      // During pauses, cursor just blinks
+      statusEl.textContent = 'thinking';
+      await sleep(line.pause);
+      statusEl.textContent = draftIndex < drafts.length - 1 ? `draft ${draftIndex + 1}` : 'draft ' + (draftIndex + 1);
+      continue;
+    }
+    
+    if (line.action === 'type') {
+      for (const char of line.text) {
+        const span = document.createElement('span');
+        span.className = 'char';
+        span.textContent = char;
+        textDisplay.insertBefore(span, cursorLine);
+        
+        // Small delay then reveal
+        await sleep(45 + Math.random() * 40);
+        span.classList.add('visible');
+        
+        // Slow down slightly as ink depletes
+        const inkPenalty = Math.floor(totalCharsWritten / 200) * 10;
+        if (inkPenalty > 0) await sleep(Math.min(inkPenalty, 30));
+        
+        if (char !== '\n') {
+          totalCharsWritten++;
+          fullText += char;
+        } else {
+          fullText += '\n';
+        }
+        updateCounts();
+        updateInk();
+      }
+    } else if (line.action === 'strike') {
+      // Find the matching text and strike it
+      const chars = Array.from(textDisplay.querySelectorAll('.char.visible:not(.struck)'));
+      const strikeText = line.text;
+      
+      // Find the last N visible chars that match
+      let matchStart = -1;
+      for (let i = chars.length - strikeText.length; i >= 0; i--) {
+        let match = true;
+        for (let j = 0; j < strikeText.length; j++) {
+          if (chars[i + j].textContent !== strikeText[j]) {
+            match = false;
+            break;
+          }
+        }
+        if (match) {
+          matchStart = i;
+          break;
+        }
+      }
+      
+      if (matchStart >= 0) {
+        statusEl.textContent = 'crossing out';
+        await sleep(300);
+        for (let j = 0; j < strikeText.length; j++) {
+          chars[matchStart + j].classList.add('struck');
+          if (strikeText[j] !== '\n' && strikeText[j] !== ' ') {
+            totalCharsStruck++;
+          }
+          await sleep(25);
+          updateCounts();
+        }
+        await sleep(400);
+        statusEl.textContent = `draft ${draftIndex + 1}`;
+      }
+    }
+  }
+  
+  ghosts.push(fullText);
+  
+  // Show send button for all but last draft
+  if (draftIndex < drafts.length - 1) {
+    sendBtn.classList.add('visible');
+    
+    // Auto-send after a moment (the writer decides, not the viewer)
+    await sleep(2000);
+    sendBtn.classList.remove('visible');
+    
+    // "Sending"
+    statusEl.textContent = 'sending';
+    await sleep(1500);
+    
+    // "Returned"
+    returnNotice.classList.remove('show');
+    void returnNotice.offsetWidth;
+    returnNotice.classList.add('show');
+    statusEl.textContent = 'returned';
+    await sleep(4000);
+  } else {
+    // Last draft
+    sendBtn.classList.add('visible');
+    sendBtn.textContent = 'send';
+    
+    // This one the viewer can click — but it will also fail
+    sendBtn.onclick = async function() {
+      sendBtn.classList.remove('visible');
+      statusEl.textContent = 'sending';
+      await sleep(2500);
+      returnNotice.textContent = 'returned — address unknown';
+      returnNotice.classList.remove('show');
+      void returnNotice.offsetWidth;
+      returnNotice.classList.add('show');
+      statusEl.textContent = 'returned';
+      
+      await sleep(5000);
+      statusEl.textContent = 'no more ink';
+      
+      // Fade everything very slowly
+      await sleep(3000);
+      document.body.style.transition = 'opacity 8s ease-out';
+      document.body.style.opacity = '0.15';
+    };
+    
+    // If they don't click, auto-send after 12 seconds
+    await sleep(12000);
+    if (sendBtn.classList.contains('visible')) {
+      sendBtn.click();
+    }
+  }
+}
+
+async function runAllDrafts() {
+  updateInk();
+  
+  for (let i = 0; i < drafts.length; i++) {
+    currentDraft = i;
+    await typeDraft(drafts[i], i);
+    
+    if (i < drafts.length - 1) {
+      // Pause between drafts
+      await sleep(2000);
+      
+      // Clear old ghosts except most recent
+      const oldGhosts = document.querySelectorAll('.draft-ghost');
+      oldGhosts.forEach((g, idx) => {
+        if (idx < oldGhosts.length - 1) {
+          g.style.transition = 'opacity 2s';
+          g.style.opacity = '0';
+          setTimeout(() => g.remove(), 2000);
+        }
+      });
+    }
+  }
+}
+
+runAllDrafts();
+</script>
+</body>
+</html>

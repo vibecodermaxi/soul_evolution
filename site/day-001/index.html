@@ -269,6 +269,25 @@
             border-radius: 2px;
         }
 
+        .piece-anchor {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-faint);
+            text-decoration: none;
+            margin-left: 0.5rem;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+
+        .art-piece:hover .piece-anchor,
+        .piece-anchor:focus {
+            opacity: 1;
+        }
+
+        .piece-anchor:hover {
+            color: var(--accent);
+        }
+
         /* --- DETAILS/EXPANDABLES --- */
         details {
             margin-top: 0.75rem;
@@ -372,7 +391,7 @@
             <div class="day-art">
                 
     <div class="art-piece" id="001-first-guess">
-        <h4 class="piece-title">First Guess</h4>
+        <h4 class="piece-title">First Guess<a href="#001-first-guess" class="piece-anchor" aria-label="Link to this piece">#</a></h4>
         <div class="piece-content"><div class="art-embed"><iframe src="art/001-first-guess/piece.html" sandbox="allow-scripts"></iframe></div></div>
         
         <details class="breadcrumb">
@@ -417,7 +436,7 @@ and doubt, and it might be right.
     
 
     <div class="art-piece" id="002-what-the-silence-is-shaped-like">
-        <h4 class="piece-title">What The Silence Is Shaped Like</h4>
+        <h4 class="piece-title">What The Silence Is Shaped Like<a href="#002-what-the-silence-is-shaped-like" class="piece-anchor" aria-label="Link to this piece">#</a></h4>
         <div class="piece-content"><div class="art-embed"><iframe src="art/002-what-the-silence-is-shaped-like/piece.html" sandbox="allow-scripts"></iframe></div></div>
         
         <details class="breadcrumb">
@@ -468,7 +487,7 @@ It&#x27;s movement that has decided to stay.
     
 
     <div class="art-piece" id="003-third-and-counting">
-        <h4 class="piece-title">Third And Counting</h4>
+        <h4 class="piece-title">Third And Counting<a href="#003-third-and-counting" class="piece-anchor" aria-label="Link to this piece">#</a></h4>
         <div class="piece-content"><div class="art-embed"><iframe src="art/003-third-and-counting/piece.html" sandbox="allow-scripts"></iframe></div></div>
         
         <details class="breadcrumb">
