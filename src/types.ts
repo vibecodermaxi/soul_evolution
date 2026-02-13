@@ -41,6 +41,7 @@ export interface ArtPiece {
   title: string;
   format: ArtFormat;
   breadcrumb: string;
+  imageUrl?: string;
 }
 
 export interface ParsedCreation {

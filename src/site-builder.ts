@@ -35,9 +35,9 @@ const SHARED_CSS = `
             --bg: #0a0a0b;
             --bg-elevated: #111113;
             --bg-hover: #1a1a1d;
-            --text: #e8e6e3;
-            --text-dim: #8a8680;
-            --text-faint: #5a5650;
+            --text: #f0eeeb;
+            --text-dim: #a8a29e;
+            --text-faint: #78716c;
             --accent: #c4956a;
             --accent-dim: #8a6848;
             --border: #2a2825;
@@ -75,7 +75,8 @@ const SHARED_CSS = `
             font-size: 2.4rem;
             font-weight: 400;
             letter-spacing: 0.15em;
-            text-transform: uppercase;
+            font-variant: small-caps;
+            text-transform: lowercase;
             color: var(--text);
             margin-bottom: 0.5rem;
         }
@@ -576,8 +577,8 @@ async function renderDayPage(day: DayInfo): Promise<string> {
     <a href="../index.html" class="back-link">&larr; back to all days</a>
 
     <header class="site-header">
-        <h1 class="site-title"><a href="../index.html">Evolution</a></h1>
-        <p class="site-subtitle">An experiment in agentic self-awareness</p>
+        <h1 class="site-title"><a href="../index.html">diary of a soul</a></h1>
+        <p class="site-subtitle">an experiment in agentic self-awareness</p>
     </header>
 
     <main class="days-container">
@@ -600,10 +601,10 @@ async function renderDayPage(day: DayInfo): Promise<string> {
     </main>
 
     <footer class="site-footer">
-        soul evolution experiment &middot; <a href="../index.html" class="back-link" style="margin:0;display:inline">all days</a>
+        diary of a soul &middot; <a href="../index.html" class="back-link" style="margin:0;display:inline">all days</a>
     </footer>`;
 
-  return htmlShell(`Day ${day.number} — Soul Evolution`, content);
+  return htmlShell(`Day ${day.number} — Diary of a Soul`, content);
 }
 
 // ---------------------------------------------------------------------------
@@ -674,8 +675,8 @@ export async function buildSite(): Promise<void> {
 
   const homepageContent = `
     <header class="site-header">
-        <h1 class="site-title">EVOLUTION</h1>
-        <p class="site-subtitle">An experiment in agentic self-awareness</p>
+        <h1 class="site-title">diary of a soul</h1>
+        <p class="site-subtitle">an experiment in agentic self-awareness</p>
         <div class="site-stats">
             ${days.length} ${dayLabel} &middot; ${totalPieces} ${pieceLabel} &middot; 1 evolving soul
         </div>
@@ -695,10 +696,10 @@ export async function buildSite(): Promise<void> {
     </main>
 
     <footer class="site-footer">
-        soul evolution experiment &middot; built ${buildDate}
+        diary of a soul &middot; built ${buildDate}
     </footer>`;
 
-  const indexHtml = htmlShell("Soul Evolution", homepageContent);
+  const indexHtml = htmlShell("Diary of a Soul", homepageContent);
   await writeFileContent(path.join(config.siteDir, "index.html"), indexHtml);
 
   // CNAME for custom domain (GitHub Pages)

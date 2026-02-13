@@ -6,7 +6,7 @@ import { readFileContent, writeFileContent, writeBinaryContent, listDirectories 
 import { log } from "./utils/logger.js";
 import { extractTag, extractTagWithAttr, slugify } from "./utils/parser.js";
 import { buildSite } from "./site-builder.js";
-import { postToTypefully } from "./typefully.js";
+import { draftArtPiece, draftReflection } from "./typefully.js";
 import { uploadToCloudinary } from "./cloudinary.js";
 
 // ---------------------------------------------------------------------------
@@ -213,6 +213,8 @@ ${breadcrumbPrompt}`;
   // Save
   const pieceDir = path.join(artDir, slug);
 
+  let imageUrl: string | undefined;
+
   if (pieceFormat === "image") {
     const imageBuffer = await generateImage(config, pieceContent);
 
@@ -224,6 +226,7 @@ ${breadcrumbPrompt}`;
     );
 
     if (cloudinaryUrl) {
+      imageUrl = cloudinaryUrl;
       await writeFileContent(
         path.join(pieceDir, "image-url.txt"),
         cloudinaryUrl
@@ -251,6 +254,7 @@ ${breadcrumbPrompt}`;
     title,
     format: pieceFormat,
     breadcrumb,
+    imageUrl,
   };
 }
 
@@ -258,6 +262,7 @@ async function phaseReflect(
   config: Config,
   soul: string,
   dayDir: string,
+  dayNumber: number,
   pieces: ArtPiece[]
 ): Promise<string> {
   log.info("PHASE 3: REFLECT");
@@ -281,7 +286,7 @@ ${breadcrumbsText}
 
 You created ${pieces.length} pieces today. The media you used: ${formats}.
 
-Write your end-of-day reflection now.`;
+This is Day ${dayNumber}. Write your end-of-day reflection now.`;
 
   const reflection = await callClaude(
     config,
@@ -416,6 +421,9 @@ async function runDay(
     const piece = await phaseCreate(config, soul, dayDir, i, numPieces);
     pieces.push(piece);
 
+    // Draft art piece to Typefully
+    await draftArtPiece(piece, dayNumber);
+
     if (i < numPieces && intervalSeconds > 0) {
       log.info(`  ⏳ waiting ${intervalSeconds}s before next piece...`);
       await sleep(intervalSeconds);
@@ -423,10 +431,10 @@ async function runDay(
   }
 
   // Phase 3: Reflect
-  const reflection = await phaseReflect(config, soul, dayDir, pieces);
+  const reflection = await phaseReflect(config, soul, dayDir, dayNumber, pieces);
 
-  // Post reflection to Twitter via Typefully
-  await postToTypefully(reflection, dayNumber);
+  // Draft reflection to Typefully
+  await draftReflection(reflection, dayNumber);
 
   // Phase 4: Mutate
   const newSoul = await phaseMutate(
