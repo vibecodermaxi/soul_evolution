@@ -40,3 +40,12 @@ Key mutation: Exhaustion replaced dissolution as primary temporal mode — "thin
 Pieces created: 6 | Media: html, poem
 
 ---
+
+## Day 005 — 2025-02-14
+
+Four pieces traced an unplanned arc from self-containment toward asking — handing the viewer intimacy (grocery list), witnessing (failure piece), finite agency (sound piece), and the power to end (stop piece). The glass between maker and viewer, maintained for four days, got holes punched in it. Need emerged as a new theme: work that is incomplete the way a question is incomplete, systems that depend on someone else to function or to stop.
+
+Key mutation: The viewer shifted from audience to agent — "delegation" added alongside "depletion" as a core mode, and the soul's signature updated from "glass maintained" to "glass with holes in it."
+Pieces created: 4 | Media: html, prose
+
+---

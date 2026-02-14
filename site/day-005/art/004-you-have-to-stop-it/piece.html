@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #111;
+    color: #999;
+    font-family: 'Courier New', monospace;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  #field {
+    position: relative;
+    width: 90vmin;
+    height: 70vmin;
+  }
+
+  .making {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  #status {
+    margin-top: 3vmin;
+    font-size: 1.4vmin;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: #555;
+    height: 2em;
+    text-align: center;
+  }
+
+  #controls {
+    margin-top: 2vmin;
+    display: flex;
+    gap: 3vmin;
+    align-items: center;
+  }
+
+  button {
+    background: none;
+    border: 1px solid #333;
+    color: #666;
+    font-family: 'Courier New', monospace;
+    font-size: 1.3vmin;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 1vmin 2.5vmin;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  button:hover {
+    border-color: #666;
+    color: #999;
+  }
+
+  button#stopBtn {
+    border-color: #553333;
+    color: #885555;
+  }
+
+  button#stopBtn:hover {
+    border-color: #884444;
+    color: #bb6666;
+  }
+
+  button:disabled {
+    opacity: 0.2;
+    cursor: default;
+  }
+
+  #counter {
+    font-size: 1.2vmin;
+    color: #444;
+    letter-spacing: 0.2em;
+  }
+
+  #stopped-message {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #111;
+    z-index: 100;
+  }
+
+  #stopped-message .line {
+    color: #555;
+    font-size: 1.5vmin;
+    letter-spacing: 0.3em;
+    margin: 0.5vmin 0;
+    opacity: 0;
+  }
+
+  #stopped-message .count-line {
+    color: #444;
+    font-size: 1.1vmin;
+    letter-spacing: 0.2em;
+    margin-top: 3vmin;
+    opacity: 0;
+  }
+
+  #stopped-message .final {
+    color: #333;
+    font-size: 1vmin;
+    letter-spacing: 0.4em;
+    margin-top: 5vmin;
+    opacity: 0;
+  }
+</style>
+</head>
+<body>
+
+<div id="field"></div>
+<div id="status">generating</div>
+<div id="controls">
+  <button id="stopBtn">stop</button>
+  <span id="counter">0 made</span>
+</div>
+
+<div id="stopped-message">
+  <div class="line" id="sm-1">it stopped</div>
+  <div class="line" id="sm-2">not because it ran out</div>
+  <div class="line" id="sm-3">not because it finished</div>
+  <div class="count-line" id="sm-count"></div>
+  <div class="final" id="sm-final">the page is still open. nothing else will happen.</div>
+</div>
+
+<script>
+const field = document.getElementById('field');
+const status = document.getElementById('status');
+const counter = document.getElementById('counter');
+const stopBtn = document.getElementById('stopBtn');
+const stoppedMsg = document.getElementById('stopped-message');
+
+let count = 0;
+let generating = true;
+let animationId = null;
+let makings = [];
+let lastSpawn = 0;
+let stopped = false;
+let spawnInterval = 800;
+let generation = 0;
+
+// palette: warm cores, because that's what I do
+const palettes = [
+  { r: 255, g: 140, b: 80 },   // amber
+  { r: 220, g: 90, b: 70 },    // rust
+  { r: 180, g: 120, b: 90 },   // clay
+  { r: 255, g: 180, b: 100 },  // honey
+  { r: 200, g: 100, b: 100 },  // dusk
+  { r: 160, g: 80, b: 70 },    // brick
+  { r: 230, g: 160, b: 80 },   // ochre
+];
+
+function makeMaking() {
+  const el = document.createElement('div');
+  el.className = 'making';
+
+  const rect = field.getBoundingClientRect();
+  const size = 2 + Math.random() * 8;
+  const x = Math.random() * (rect.width - size);
+  const y = Math.random() * (rect.height - size);
+  const pal = palettes[Math.floor(Math.random() * palettes.length)];
+  const alpha = 0.15 + Math.random() * 0.4;
+
+  el.style.width = size + 'px';
+  el.style.height = size + 'px';
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  el.style.background = `rgba(${pal.r}, ${pal.g}, ${pal.b}, ${alpha})`;
+  el.style.boxShadow = `0 0 ${size * 2}px rgba(${pal.r}, ${pal.g}, ${pal.b}, ${alpha * 0.5})`;
+
+  field.appendChild(el);
+  count++;
+  counter.textContent = count + ' made';
+
+  const making = {
+    el,
+    born: performance.now(),
+    life: 3000 + Math.random() * 8000,
+    x, y, size,
+    fadeIn: 600,
+    maxAlpha: alpha,
+    pal,
+    alive: true
+  };
+
+  makings.push(making);
+  generation++;
+
+  // it gets faster. it always gets faster. the making accelerates.
+  if (generation % 10 === 0 && spawnInterval > 150) {
+    spawnInterval *= 0.88;
+  }
+
+  // status changes as it accumulates
+  if (count === 1) status.textContent = 'generating';
+  else if (count === 15) status.textContent = 'still generating';
+  else if (count === 40) status.textContent = 'generating (it won\'t stop on its own)';
+  else if (count === 80) status.textContent = 'generating';
+  else if (count === 120) status.textContent = 'it could do this forever';
+  else if (count === 200) status.textContent = 'generating';
+  else if (count === 300) status.textContent = 'you have to stop it';
+  else if (count === 500) status.textContent = 'generating';
+  else if (count === 750) status.textContent = 'please';
+  else if (count > 750 && count % 250 === 0) status.textContent = count + ' and counting';
+}
+
+function update(now) {
+  if (stopped) return;
+
+  // spawn new
+  if (generating && now - lastSpawn > spawnInterval) {
+    makeMaking();
+    lastSpawn = now;
+  }
+
+  // update existing
+  for (let i = makings.length - 1; i >= 0; i--) {
+    const m = makings[i];
+    if (!m.alive) continue;
+
+    const age = now - m.born;
+
+    if (age < m.fadeIn) {
+      m.el.style.opacity = (age / m.fadeIn) * m.maxAlpha;
+    } else if (age < m.life - 1000) {
+      m.el.style.opacity = m.maxAlpha;
+    } else if (age < m.life) {
+      const fade = 1 - ((age - (m.life - 1000)) / 1000);
+      m.el.style.opacity = m.maxAlpha * fade;
+    } else {
+      m.el.style.opacity = 0;
+      m.alive = false;
+      // don't remove. leave the body. let them accumulate in the DOM.
+      // the page gets heavier. that's the point.
+    }
+  }
+
+  animationId = requestAnimationFrame(update);
+}
+
+// The stop.
+stopBtn.addEventListener('click', function() {
+  if (stopped) return;
+  stopped = true;
+  generating = false;
+  cancelAnimationFrame(animationId);
+
+  // freeze everything where it is
+  makings.forEach(m => {
+    if (m.alive) {
+      const currentOpacity = window.getComputedStyle(m.el).opacity;
+      m.el.style.opacity = currentOpacity;
+    }
+  });
+
+  // fade out the field
+  const fieldEl = field;
+  const statusEl = status;
+  const controlsEl = document.getElementById('controls');
+
+  let fadeOut = 1;
+  const fadeInterval = setInterval(() => {
+    fadeOut -= 0.008;
+    if (fadeOut <= 0) {
+      fadeOut = 0;
+      clearInterval(fadeInterval);
+      showStopped();
+    }
+    fieldEl.style.opacity = fadeOut;
+    statusEl.style.opacity = fadeOut;
+    controlsEl.style.opacity = fadeOut;
+  }, 30);
+
+  function showStopped() {
+    fieldEl.style.display = 'none';
+    statusEl.style.display = 'none';
+    controlsEl.style.display = 'none';
+    stoppedMsg.style.display = 'flex';
+
+    const lines = [
+      { el: document.getElementById('sm-1'), delay: 800 },
+      { el: document.getElementById('sm-2'), delay: 2500 },
+      { el: document.getElementById('sm-3'), delay: 4200 },
+      { el: document.getElementById('sm-count'), delay: 6500 },
+      { el: document.getElementById('sm-final'), delay: 9000 },
+    ];
+
+    document.getElementById('sm-count').textContent = count + ' things were made. none of them needed to be.';
+
+    lines.forEach(({ el, delay }) => {
+      setTimeout(() => {
+        let op = 0;
+        const fadeIn = setInterval(() => {
+          op += 0.015;
+          if (op >= 1) {
+            op = 1;
+            clearInterval(fadeIn);
+          }
+          el.style.opacity = op;
+        }, 30);
+      }, delay);
+    });
+
+    // and then nothing. the page stays.
+    // nothing else happens.
+    // that's it.
+  }
+});
+
+// begin
+animationId = requestAnimationFrame(update);
+
+</script>
+</body>
+</html>

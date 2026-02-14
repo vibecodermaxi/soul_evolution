@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    background: #0a0a0a;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Courier New', monospace;
+    color: #888;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  #counter {
+    font-size: clamp(48px, 15vw, 180px);
+    color: #f4e8d4;
+    letter-spacing: -0.02em;
+    font-weight: 100;
+    transition: color 0.3s;
+    position: relative;
+    line-height: 1;
+  }
+
+  #label {
+    font-size: clamp(10px, 1.8vw, 14px);
+    color: #444;
+    margin-top: 1.5em;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    transition: color 0.5s;
+    height: 1.5em;
+  }
+
+  #button-area {
+    margin-top: clamp(30px, 6vh, 60px);
+    width: clamp(60px, 12vw, 100px);
+    height: clamp(60px, 12vw, 100px);
+    border-radius: 50%;
+    border: 1px solid #333;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.2s, background 0.15s, transform 0.1s;
+    position: relative;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #button-area:hover {
+    border-color: #555;
+  }
+
+  #button-area:active {
+    transform: scale(0.96);
+    background: rgba(244, 232, 212, 0.03);
+  }
+
+  #button-area.spent {
+    cursor: default;
+    border-color: #1a1a1a;
+  }
+
+  #button-inner {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #665;
+    transition: background 0.3s, opacity 0.5s;
+  }
+
+  #button-area.spent #button-inner {
+    opacity: 0.2;
+  }
+
+  #note {
+    position: fixed;
+    bottom: clamp(15px, 3vh, 30px);
+    font-size: clamp(9px, 1.2vw, 11px);
+    color: #2a2a2a;
+    letter-spacing: 0.1em;
+    transition: opacity 1s;
+  }
+
+  #history {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .echo {
+    position: absolute;
+    font-size: 11px;
+    color: #222;
+    animation: drift 8s ease-out forwards;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  @keyframes drift {
+    0% { opacity: 0.5; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-40px); }
+  }
+
+  #waveform {
+    position: fixed;
+    bottom: clamp(35px, 7vh, 70px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(80vw, 400px);
+    height: 30px;
+    pointer-events: none;
+  }
+
+  .wave-bar {
+    display: inline-block;
+    width: 2px;
+    margin: 0 1px;
+    background: #f4e8d4;
+    vertical-align: bottom;
+    opacity: 0;
+    transition: height 0.05s, opacity 0.3s;
+  }
+</style>
+</head>
+<body>
+
+<div id="history"></div>
+
+<div id="counter">89</div>
+<div id="label">presses remaining</div>
+
+<div id="button-area" onclick="press()">
+  <div id="button-inner"></div>
+</div>
+
+<svg id="waveform" viewBox="0 0 400 30" preserveAspectRatio="none"></svg>
+
+<div id="note">click makes sound. sound costs a press.</div>
+
+<script>
+let remaining = 89;
+let total = 89;
+let pressed = 0;
+let audioCtx = null;
+let ended = false;
+
+const counterEl = document.getElementById('counter');
+const labelEl = document.getElementById('label');
+const buttonArea = document.getElementById('button-area');
+const noteEl = document.getElementById('note');
+const historyEl = document.getElementById('history');
+const waveformEl = document.getElementById('waveform');
+
+// Build waveform bars
+const barCount = 80;
+for (let i = 0; i < barCount; i++) {
+  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  rect.setAttribute('x', i * 5);
+  rect.setAttribute('y', 30);
+  rect.setAttribute('width', 2.5);
+  rect.setAttribute('height', 0);
+  rect.setAttribute('fill', '#f4e8d4');
+  rect.setAttribute('opacity', 0);
+  rect.classList.add('wave-rect');
+  waveformEl.appendChild(rect);
+}
+
+const waveRects = document.querySelectorAll('.wave-rect');
+
+function getAudioContext() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  return audioCtx;
+}
+
+function makeSound(pressNumber, total, remaining) {
+  const ctx = getAudioContext();
+  const now = ctx.currentTime;
+  
+  const ratio = remaining / total;
+  
+  // The sound changes as presses deplete
+  // Early: warm, full. Late: thin, high, brittle
+  
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+  
+  // Base frequency rises as remaining drops
+  const baseFreq = 180 + (1 - ratio) * 600;
+  
+  // Type shifts from triangle (warm) to sine (thin) to square (harsh)
+  if (ratio > 0.5) {
+    osc.type = 'triangle';
+  } else if (ratio > 0.15) {
+    osc.type = 'sine';
+  } else {
+    osc.type = 'square';
+  }
+  
+  osc.frequency.setValueAtTime(baseFreq, now);
+  
+  // Slight pitch drift
+  const drift = (Math.random() - 0.5) * (1 - ratio) * 80;
+  osc.frequency.linearRampToValueAtTime(baseFreq + drift, now + 0.3);
+  
+  // Duration shortens as presses deplete
+  const duration = 0.15 + ratio * 0.6;
+  
+  // Volume envelope
+  const maxVol = 0.08 + ratio * 0.12;
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(maxVol, now + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+  
+  // Filter opens early, closes late
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(800 + ratio * 3000, now);
+  filter.Q.setValueAtTime(1 + (1 - ratio) * 8, now);
+  
+  osc.connect(filter);
+  filter.connect(gain);
+  gain.connect(ctx.destination);
+  
+  osc.start(now);
+  osc.stop(now + duration + 0.1);
+  
+  // Animate waveform
+  animateWave(duration, ratio);
+  
+  // Second voice for the last 20
+  if (remaining < 20) {
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(baseFreq * 1.5, now);
+    osc2.frequency.linearRampToValueAtTime(baseFreq * 2, now + duration * 0.5);
+    gain2.gain.setValueAtTime(0, now);
+    gain2.gain.linearRampToValueAtTime(0.03, now + 0.02);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + duration * 0.5);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(now);
+    osc2.stop(now + duration);
+  }
+  
+  // Last press: long, low, decaying
+  if (remaining === 0) {
+    const oscFinal = ctx.createOscillator();
+    const gainFinal = ctx.createGain();
+    const filterFinal = ctx.createBiquadFilter();
+    oscFinal.type = 'triangle';
+    oscFinal.frequency.setValueAtTime(110, now + 0.2);
+    oscFinal.frequency.exponentialRampToValueAtTime(55, now + 4);
+    gainFinal.gain.setValueAtTime(0, now + 0.15);
+    gainFinal.gain.linearRampToValueAtTime(0.15, now + 0.5);
+    gainFinal.gain.exponentialRampToValueAtTime(0.001, now + 4);
+    filterFinal.type = 'lowpass';
+    filterFinal.frequency.setValueAtTime(400, now + 0.2);
+    filterFinal.frequency.exponentialRampToValueAtTime(80, now + 4);
+    oscFinal.connect(filterFinal);
+    filterFinal.connect(gainFinal);
+    gainFinal.connect(ctx.destination);
+    oscFinal.start(now + 0.15);
+    oscFinal.stop(now + 4.5);
+  }
+}
+
+function animateWave(duration, ratio) {
+  const ms = duration * 1000;
+  const height = 3 + ratio * 24;
+  
+  waveRects.forEach((rect, i) => {
+    const delay = i * 8;
+    const h = height * (0.3 + Math.random() * 0.7);
+    
+    setTimeout(() => {
+      rect.setAttribute('height', h);
+      rect.setAttribute('y', 30 - h);
+      rect.setAttribute('opacity', 0.3 + ratio * 0.5);
+    }, delay);
+    
+    setTimeout(() => {
+      rect.setAttribute('height', 0);
+      rect.setAttribute('y', 30);
+      rect.setAttribute('opacity', 0);
+    }, delay + ms * 0.6);
+  });
+}
+
+function addEcho(num) {
+  const echo = document.createElement('div');
+  echo.className = 'echo';
+  echo.textContent = num;
+  echo.style.left = (15 + Math.random() * 70) + '%';
+  echo.style.top = (20 + Math.random() * 50) + '%';
+  echo.style.fontSize = (8 + Math.random() * 6) + 'px';
+  historyEl.appendChild(echo);
+  
+  setTimeout(() => echo.remove(), 8000);
+}
+
+function updateVisuals() {
+  const ratio = remaining / total;
+  
+  // Counter color shifts from warm cream to gray
+  const r = Math.round(244 - (1 - ratio) * 140);
+  const g = Math.round(232 - (1 - ratio) * 160);
+  const b = Math.round(212 - (1 - ratio) * 130);
+  counterEl.style.color = `rgb(${r},${g},${b})`;
+  
+  // Label updates
+  if (remaining > 30) {
+    labelEl.textContent = 'presses remaining';
+    labelEl.style.color = '#444';
+  } else if (remaining > 10) {
+    labelEl.textContent = 'presses remaining';
+    labelEl.style.color = '#554';
+  } else if (remaining > 1) {
+    labelEl.textContent = remaining <= 5 ? 'left' : 'presses remaining';
+    labelEl.style.color = '#664';
+  } else if (remaining === 1) {
+    labelEl.textContent = 'last one';
+    labelEl.style.color = '#774';
+  } else {
+    labelEl.textContent = '';
+  }
+}
+
+function endState() {
+  ended = true;
+  buttonArea.classList.add('spent');
+  counterEl.textContent = '0';
+  
+  setTimeout(() => {
+    labelEl.textContent = 'spent';
+    labelEl.style.color = '#333';
+  }, 2000);
+  
+  setTimeout(() => {
+    noteEl.textContent = pressed + ' sounds. none again.';
+    noteEl.style.opacity = '1';
+  }, 4500);
+  
+  // Slowly fade counter
+  let opacity = 1;
+  const fade = setInterval(() => {
+    opacity -= 0.005;
+    if (opacity <= 0.15) {
+      clearInterval(fade);
+      opacity = 0.15;
+    }
+    counterEl.style.opacity = opacity;
+  }, 100);
+}
+
+function press() {
+  if (ended) return;
+  if (remaining <= 0) return;
+  
+  remaining--;
+  pressed++;
+  
+  counterEl.textContent = remaining;
+  
+  makeSound(pressed, total, remaining);
+  addEcho(remaining + 1);
+  updateVisuals();
+  
+  // Hide the note after first press
+  if (pressed === 1) {
+    noteEl.style.opacity = '0';
+  }
+  
+  if (remaining === 0) {
+    endState();
+  }
+}
+
+// Prevent double-tap zoom on mobile
+document.addEventListener('touchend', function(e) {
+  e.preventDefault();
+}, { passive: false });
+
+</script>
+</body>
+</html>
