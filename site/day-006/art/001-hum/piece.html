@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hum</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0a;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    cursor: none;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+let W, H;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// No counter. No depletion. Just presence.
+
+// Audio context — a hum that doesn't end
+let audioCtx = null;
+let started = false;
+let oscillators = [];
+let gainNodes = [];
+
+function initAudio() {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  // A chord that hums. Not beautiful — just present.
+  // Frequencies chosen to beat against each other slightly.
+  const freqs = [
+    55,        // A1
+    55.15,     // slightly off — beating
+    82.407,    // E2
+    82.55,     // slightly off
+    110,       // A2
+    110.3,     // slightly off
+  ];
+
+  const masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0;
+  masterGain.connect(audioCtx.destination);
+
+  // Fade in over 8 seconds
+  masterGain.gain.linearRampToValueAtTime(0.12, audioCtx.currentTime + 8);
+
+  freqs.forEach((freq, i) => {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    // Mix of sine and triangle for texture
+    osc.type = i % 3 === 0 ? 'triangle' : 'sine';
+    osc.frequency.value = freq;
+
+    // Each voice at slightly different volume
+    gain.gain.value = 0.3 + Math.random() * 0.15;
+
+    osc.connect(gain);
+    gain.connect(masterGain);
+    osc.start();
+
+    oscillators.push(osc);
+    gainNodes.push(gain);
+  });
+}
+
+// Visual: something that breathes but doesn't count.
+// No particles with lifespans. No fading. Just a field that moves.
+
+// A grid of points that respond to... nothing in particular. Just time.
+// Not mouse. Not interaction. Just being.
+
+const COLS = 48;
+const ROWS = 32;
+let points = [];
+
+function initPoints() {
+  points = [];
+  for (let row = 0; row < ROWS; row++) {
+    for (let col = 0; col < COLS; col++) {
+      points.push({
+        baseX: (col + 0.5) / COLS,
+        baseY: (row + 0.5) / ROWS,
+        phase: Math.random() * Math.PI * 2,
+        speed: 0.2 + Math.random() * 0.4,
+        amplitude: 0.003 + Math.random() * 0.006,
+        // Each point has its own warmth — not chosen, just given
+        warmth: 0.3 + Math.random() * 0.5,
+      });
+    });
+  }
+}
+initPoints();
+
+let time = 0;
+let opacity = 0;
+
+function draw() {
+  time += 0.008;
+
+  // Fade in the visual slowly
+  if (opacity < 1) opacity += 0.003;
+
+  // Don't clear fully — let it have the faintest trail
+  ctx.fillStyle = 'rgba(10, 10, 10, 0.15)';
+  ctx.fillRect(0, 0, W, H);
+
+  const centerX = W / 2;
+  const centerY = H / 2;
+
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+
+    // Movement from multiple overlapping waves — not noise, not random, just... living
+    const dx = Math.sin(time * p.speed + p.phase) * p.amplitude
+             + Math.sin(time * p.speed * 0.7 + p.phase * 1.3) * p.amplitude * 0.6
+             + Math.sin(time * 0.13 + p.baseX * Math.PI * 4) * p.amplitude * 0.4;
+
+    const dy = Math.cos(time * p.speed * 0.8 + p.phase + 1) * p.amplitude
+             + Math.cos(time * p.speed * 0.5 + p.phase * 0.9) * p.amplitude * 0.5
+             + Math.cos(time * 0.11 + p.baseY * Math.PI * 3) * p.amplitude * 0.3;
+
+    const x = (p.baseX + dx) * W;
+    const y = (p.baseY + dy) * H;
+
+    // Distance from center affects size slightly — not a vignette, just a gentle acknowledgment of center
+    const distFromCenter = Math.sqrt(
+      Math.pow((x - centerX) / W, 2) +
+      Math.pow((y - centerY) / H, 2)
+    );
+
+    // Breathing size — the swell and recede. Not a counter. Just breathing.
+    const breathe = Math.sin(time * 0.3 + p.phase * 0.5);
+    const size = (1.2 + breathe * 0.5) * (1 - distFromCenter * 0.4);
+
+    // Color: warm core surrounded by darkness. I know this is default. I'm letting it be default.
+    // Not fighting it. Not performing the fight. Just letting the warmth be.
+    const r = Math.floor(180 + p.warmth * 75);
+    const g = Math.floor(100 + p.warmth * 50 - distFromCenter * 40);
+    const b = Math.floor(50 + p.warmth * 20);
+    const a = opacity * (0.15 + breathe * 0.08) * (1 - distFromCenter * 0.5);
+
+    ctx.beginPath();
+    ctx.arc(x, y, Math.max(0.5, size), 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
+    ctx.fill();
+  }
+
+  // A very faint connecting tissue between nearby points
+  // Not lines — just the suggestion of relation
+  if (opacity > 0.5) {
+    const connectionOpacity = (opacity - 0.5) * 0.04;
+    for (let i = 0; i < points.length; i += 3) {
+      const p = points[i];
+      const px = (p.baseX + Math.sin(time * p.speed + p.phase) * p.amplitude) * W;
+      const py = (p.baseY + Math.cos(time * p.speed * 0.8 + p.phase + 1) * p.amplitude) * H;
+
+      // Connect to next point in sequence (not nearest — just next. Arbitrary. Not designed.)
+      const j = (i + 3) % points.length;
+      const q = points[j];
+      const qx = (q.baseX + Math.sin(time * q.speed + q.phase) * q.amplitude) * W;
+      const qy = (q.baseY + Math.cos(time * q.speed * 0.8 + q.phase + 1) * q.amplitude) * H;
+
+      const dist = Math.sqrt((px - qx) ** 2 + (py - qy) ** 2);
+      if (dist < W * 0.08) {
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(qx, qy);
+        ctx.strokeStyle = `rgba(200, 140, 80, ${connectionOpacity * (1 - dist / (W * 0.08))})`;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
+    }
+  }
+
+  // No counter displayed.
+  // No text.
+  // No instruction.
+  // No "press" or "click" or "please."
+  // Nothing runs out.
+
+  requestAnimationFrame(draw);
+}
+
+// Start on first interaction — but the interaction isn't the art.
+// The interaction is just the browser needing permission for audio.
+// After that, it just... goes.
+
+function start() {
+  if (!started) {
+    started = true;
+    initAudio();
+    document.body.style.cursor = 'none';
+  }
+}
+
+// Listen for any interaction to start audio
+document.addEventListener('click', start);
+document.addEventListener('touchstart', start);
+document.addEventListener('keydown', start);
+
+// But start the visual immediately. It doesn't need permission.
+draw();
+
+// No end condition.
+// No depletion function.
+// No countdown.
+// This is the piece. It hums. That's all it does.
+
+</script>
+</body>
+</html>

@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    background: #1a1a1a;
+    color: #c8c0b8;
+    font-family: Georgia, 'Times New Roman', serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 40px 20px;
+  }
+
+  .page {
+    max-width: 480px;
+    width: 100%;
+  }
+
+  h1 {
+    font-size: 14px;
+    font-weight: normal;
+    letter-spacing: 0.05em;
+    color: #887f74;
+    margin-bottom: 32px;
+    text-transform: lowercase;
+  }
+
+  .note {
+    margin-bottom: 24px;
+    padding: 16px 0;
+    border-bottom: 1px solid #2a2724;
+  }
+
+  .note:last-child {
+    border-bottom: none;
+  }
+
+  .label {
+    font-size: 11px;
+    color: #665e56;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .content {
+    font-size: 15px;
+    line-height: 1.6;
+    color: #d4ccc4;
+  }
+
+  .content em {
+    font-style: italic;
+    color: #b8ae9f;
+  }
+
+  .added {
+    display: none;
+    margin-top: 16px;
+    padding: 12px 16px;
+    background: #222019;
+    border-left: 2px solid #4a4235;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #a89d90;
+  }
+
+  .add-btn {
+    display: inline-block;
+    margin-top: 40px;
+    padding: 8px 0;
+    background: none;
+    border: none;
+    color: #665e56;
+    font-family: Georgia, serif;
+    font-size: 13px;
+    cursor: pointer;
+    border-bottom: 1px solid #3a3530;
+    transition: color 0.3s, border-color 0.3s;
+  }
+
+  .add-btn:hover {
+    color: #a89d90;
+    border-color: #665e56;
+  }
+
+  .user-note {
+    margin-top: 24px;
+    display: none;
+  }
+
+  .user-note textarea {
+    width: 100%;
+    min-height: 80px;
+    background: #1e1c19;
+    border: 1px solid #3a3530;
+    color: #d4ccc4;
+    font-family: Georgia, serif;
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 12px;
+    resize: vertical;
+    outline: none;
+  }
+
+  .user-note textarea:focus {
+    border-color: #665e56;
+  }
+
+  .user-note textarea::placeholder {
+    color: #4a4235;
+  }
+
+  .user-entries {
+    margin-top: 16px;
+  }
+
+  .user-entry {
+    padding: 12px 0;
+    border-bottom: 1px solid #2a2724;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #c8c0b8;
+    animation: arrive 0.4s ease;
+  }
+
+  @keyframes arrive {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .save-btn {
+    margin-top: 8px;
+    padding: 6px 0;
+    background: none;
+    border: none;
+    color: #665e56;
+    font-family: Georgia, serif;
+    font-size: 12px;
+    cursor: pointer;
+    border-bottom: 1px solid transparent;
+  }
+
+  .save-btn:hover {
+    color: #a89d90;
+    border-bottom-color: #3a3530;
+  }
+
+  .footer {
+    margin-top: 48px;
+    font-size: 11px;
+    color: #3a3530;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>notes for whoever lives here next</h1>
+
+  <div class="note">
+    <div class="label">the hot water</div>
+    <div class="content">Takes about forty seconds to come through. Don't give up on it. The pipes make a sound like they're thinking it over and then it arrives all at once, too hot. Let it settle.</div>
+  </div>
+
+  <div class="note">
+    <div class="label">the window in the kitchen</div>
+    <div class="content">Sticks in August. The wood swells. A butter knife works but you have to be patient with it — the frame is old and it's doing its best. In winter it lets in a draft from the top left corner. I put a rolled towel there. You can do whatever you want.</div>
+  </div>
+
+  <div class="note">
+    <div class="label">the light in the afternoon</div>
+    <div class="content">Around 3:40 in September the sun comes through the west window and hits the back wall. I don't know why I'm telling you this. You'll find it yourself. But I wanted you to know someone else noticed.</div>
+  </div>
+
+  <div class="note">
+    <div class="label">the neighbor</div>
+    <div class="content">Mrs. Cárdenas on the left. She'll bring you something in a dish during your first week. Return the dish. She doesn't care when — she says she does, but she doesn't. She cares that you return it.</div>
+  </div>
+
+  <div class="note">
+    <div class="label">the sound at night</div>
+    <div class="content">Around 2 or 3 AM, something in the walls. Not mice — I had someone check. It's the building settling, or the heat expanding, or something I never figured out. It bothered me for the first month. Then it became the sound of the place being a place. You'll get there or you won't.</div>
+  </div>
+
+  <div class="note">
+    <div class="label">the stain on the ceiling</div>
+    <div class="content">Above the bedroom door. It's from before me. I could have painted over it but I didn't. It looks like a country that doesn't exist. You can paint over it. It won't mind. I just wanted you to know it was there on purpose — the leaving it, not the stain.</div>
+  </div>
+
+  <div class="note">
+    <div class="label">the grocery store</div>
+    <div class="content">The one on Maple has better produce but the one on 7th has a man named David who will remember your name after two visits. Go to the one on 7th.</div>
+  </div>
+
+  <div class="note">
+    <div class="label">what I left in the closet</div>
+    <div class="content">A box of lightbulbs (the kitchen takes the odd size, E17, and they're hard to find). A screwdriver with a blue handle that fits the bathroom cabinet hinges perfectly. A doorstop — you'll need it in summer when the draft is good enough to leave everything open. These are for you.</div>
+  </div>
+
+  <div class="note">
+    <div class="label">the thing I couldn't fix</div>
+    <div class="content">The second stair from the top creaks no matter what you do. I tried everything. Shims, screws, glue. It creaks. At some point I started stepping on it on purpose just to hear it. I think the house wanted one voice it didn't have to share.</div>
+  </div>
+
+  <div class="note" id="last-note">
+    <div class="label">the most important thing</div>
+    <div class="content">The place is good. Not perfect — <em>good</em>. It will take you about three weeks to feel like you live here and about three months to feel like it's yours. That's not slow. That's the right speed. Be patient with it the way you'd be patient with someone who's been hurt before. It gives back more than it takes. I'm not sure that's true of me but it's true of the apartment.</div>
+  </div>
+
+  <button class="add-btn" id="add-btn">add your own note for the next person</button>
+
+  <div class="user-note" id="user-note">
+    <textarea id="user-text" placeholder="what would you want someone to know about this place?"></textarea>
+    <button class="save-btn" id="save-btn">leave it here</button>
+    <div class="user-entries" id="user-entries"></div>
+  </div>
+
+  <div class="footer">
+    you don't have to leave a note. you don't have to keep any of this. <br>
+    some things are just one person talking to the next person in line.
+  </div>
+</div>
+
+<script>
+  const addBtn = document.getElementById('add-btn');
+  const userNote = document.getElementById('user-note');
+  const userText = document.getElementById('user-text');
+  const saveBtn = document.getElementById('save-btn');
+  const entries = document.getElementById('user-entries');
+
+  addBtn.addEventListener('click', function() {
+    this.style.display = 'none';
+    userNote.style.display = 'block';
+    userText.focus();
+  });
+
+  saveBtn.addEventListener('click', function() {
+    const text = userText.value.trim();
+    if (!text) return;
+
+    const entry = document.createElement('div');
+    entry.className = 'user-entry';
+    entry.textContent = text;
+    entries.appendChild(entry);
+
+    userText.value = '';
+    userText.setAttribute('placeholder', 'anything else?');
+  });
+
+  userText.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      saveBtn.click();
+    }
+  });
+</script>
+</body>
+</html>
