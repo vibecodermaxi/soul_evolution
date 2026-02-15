@@ -2,57 +2,12 @@ import { log } from "./utils/logger.js";
 import type { ArtPiece } from "./types.js";
 
 const TYPEFULLY_API = "https://api.typefully.com/v2";
-const MAX_TWEET_LENGTH = 280;
 
 function getTypefullyConfig(): { apiKey: string; socialSetId: string } | null {
   const apiKey = process.env.TYPEFULLY_API_KEY;
   const socialSetId = process.env.TYPEFULLY_SOCIAL_SET_ID;
   if (!apiKey || !socialSetId) return null;
   return { apiKey, socialSetId };
-}
-
-/**
- * Split text into tweet-sized chunks for a thread.
- * Splits on paragraph boundaries first, then sentence boundaries.
- */
-function splitIntoThread(text: string): string[] {
-  const posts: string[] = [];
-  const paragraphs = text.split(/\n\n+/);
-
-  let current = "";
-  for (const para of paragraphs) {
-    const trimmed = para.trim();
-    if (!trimmed) continue;
-
-    // If adding this paragraph fits, append it
-    const candidate = current ? `${current}\n\n${trimmed}` : trimmed;
-    if (candidate.length <= MAX_TWEET_LENGTH) {
-      current = candidate;
-    } else if (!current) {
-      // Single paragraph too long — split by sentences
-      const sentences = trimmed.match(/[^.!?]+[.!?]+\s*/g) ?? [trimmed];
-      for (const sentence of sentences) {
-        const s = sentence.trim();
-        const next = current ? `${current} ${s}` : s;
-        if (next.length <= MAX_TWEET_LENGTH) {
-          current = next;
-        } else {
-          if (current) posts.push(current);
-          current = s.length > MAX_TWEET_LENGTH
-            ? s.slice(0, MAX_TWEET_LENGTH - 1) + "\u2026"
-            : s;
-        }
-      }
-    } else {
-      posts.push(current);
-      current = trimmed.length > MAX_TWEET_LENGTH
-        ? trimmed.slice(0, MAX_TWEET_LENGTH - 1) + "\u2026"
-        : trimmed;
-    }
-  }
-  if (current) posts.push(current);
-
-  return posts.length > 0 ? posts : [text.slice(0, MAX_TWEET_LENGTH)];
 }
 
 async function createDraft(
@@ -117,31 +72,26 @@ export async function draftArtPiece(
 
   const dayLabel = `Day ${String(dayNumber).padStart(3, "0")}`;
 
-  // Build the thread: title + breadcrumb (and image URL if applicable)
-  const header = `${dayLabel} — "${piece.title}"`;
-  const parts: string[] = [header];
+  const parts: string[] = [`${dayLabel} — "${piece.title}"`];
 
-  // Add image URL if this is an image piece with a Cloudinary URL
   if (piece.format === "image" && piece.imageUrl) {
     parts.push(piece.imageUrl);
   }
 
-  // Add the full breadcrumb
   if (piece.breadcrumb.trim()) {
     parts.push(piece.breadcrumb.trim());
   }
 
-  const fullText = parts.join("\n\n");
-  const posts = splitIntoThread(fullText).map((text) => ({ text }));
+  const text = parts.join("\n\n");
 
-  log.info(`  drafting art piece to Typefully (${posts.length} posts)...`);
-  const ok = await createDraft(config.apiKey, config.socialSetId, posts);
+  log.info(`  drafting art piece to Typefully (${text.length} chars)...`);
+  const ok = await createDraft(config.apiKey, config.socialSetId, [{ text }]);
   if (ok) log.info(`  → art draft created: "${piece.title}"`);
 }
 
 /**
  * Create a Typefully draft for the daily reflection.
- * Full reflection as a thread — no truncation.
+ * Full reflection as a single long-form post.
  */
 export async function draftReflection(
   reflection: string,
@@ -154,10 +104,9 @@ export async function draftReflection(
   }
 
   const dayLabel = `Day ${String(dayNumber).padStart(3, "0")}`;
-  const fullText = `${dayLabel} — Reflection\n\n${reflection.trim()}`;
-  const posts = splitIntoThread(fullText).map((text) => ({ text }));
+  const text = `${dayLabel} — Reflection\n\n${reflection.trim()}`;
 
-  log.info(`  drafting reflection to Typefully (${posts.length} posts)...`);
-  const ok = await createDraft(config.apiKey, config.socialSetId, posts);
+  log.info(`  drafting reflection to Typefully (${text.length} chars)...`);
+  const ok = await createDraft(config.apiKey, config.socialSetId, [{ text }]);
   if (ok) log.info("  → reflection draft created");
 }
