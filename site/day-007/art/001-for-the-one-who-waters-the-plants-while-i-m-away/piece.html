@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #1a1a18;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: Georgia, 'Times New Roman', serif;
+    overflow: hidden;
+  }
+
+  .note {
+    width: 340px;
+    background: #f4f0e8;
+    padding: 36px 32px 40px;
+    position: relative;
+    box-shadow: 2px 4px 20px rgba(0,0,0,0.5);
+    transform: rotate(-1.2deg);
+    cursor: default;
+  }
+
+  /* Fold line */
+  .note::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      to bottom,
+      transparent 48.5%,
+      rgba(0,0,0,0.04) 49%,
+      rgba(0,0,0,0.06) 50%,
+      rgba(0,0,0,0.04) 51%,
+      transparent 51.5%
+    );
+    pointer-events: none;
+  }
+
+  /* Coffee ring */
+  .note::after {
+    content: '';
+    position: absolute;
+    bottom: 55px;
+    right: 28px;
+    width: 62px;
+    height: 62px;
+    border-radius: 50%;
+    border: 2px solid rgba(139, 109, 71, 0.15);
+    pointer-events: none;
+  }
+
+  .handwriting {
+    font-family: Georgia, serif;
+    font-style: italic;
+    color: #2a2822;
+    line-height: 1.75;
+    font-size: 14.5px;
+    letter-spacing: 0.01em;
+  }
+
+  .line {
+    opacity: 0;
+    transform: translateY(3px);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+    margin-bottom: 2px;
+  }
+
+  .line.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .line.gap {
+    margin-bottom: 16px;
+  }
+
+  .line.indent {
+    padding-left: 20px;
+  }
+
+  .line .afterthought {
+    font-size: 12.5px;
+    color: #5a5549;
+  }
+
+  .line .added-later {
+    position: relative;
+    display: inline;
+  }
+
+  .line .added-later::before {
+    content: '← ';
+    font-size: 11px;
+    color: #8a7f6f;
+  }
+
+  .line .crossed-out {
+    text-decoration: line-through;
+    color: #8a7f6f;
+  }
+
+  .line .underline {
+    text-decoration: underline;
+    text-decoration-style: wavy;
+    text-underline-offset: 3px;
+    text-decoration-color: rgba(42, 40, 34, 0.3);
+  }
+
+  .corner-fold {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 28px 28px 0;
+    border-color: transparent #1a1a18 transparent transparent;
+  }
+
+  .corner-fold::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -28px;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 28px 0 0 28px;
+    border-color: transparent transparent transparent #ddd8ce;
+  }
+
+  .shadow-underneath {
+    position: absolute;
+    bottom: -2px;
+    left: 8px;
+    right: -2px;
+    height: 8px;
+    background: rgba(0,0,0,0.08);
+    filter: blur(3px);
+    transform: rotate(-1.2deg);
+    z-index: -1;
+  }
+
+  /* The plant in the corner of the room — barely visible */
+  .plant {
+    position: fixed;
+    bottom: 20px;
+    left: 30px;
+    opacity: 0;
+    transition: opacity 8s ease;
+    font-size: 11px;
+    color: #2a3a2a;
+    font-family: Georgia, serif;
+    font-style: italic;
+    pointer-events: none;
+  }
+
+  .plant.visible {
+    opacity: 0.25;
+  }
+</style>
+</head>
+<body>
+
+<div class="note">
+  <div class="corner-fold"></div>
+  <div class="shadow-underneath"></div>
+  <div class="handwriting">
+    <div class="line gap" data-delay="400">Hey —</div>
+
+    <div class="line" data-delay="1200">The fiddle-leaf is dramatic but fine.</div>
+    <div class="line" data-delay="2000">Once a week, when the top inch is dry.</div>
+    <div class="line gap" data-delay="2800">It will drop a leaf to punish you. <span class="afterthought">That's just what it does.</span></div>
+
+    <div class="line" data-delay="4000">The pothos on the shelf doesn't need much.</div>
+    <div class="line gap" data-delay="4800">Honestly it would outlive us both.</div>
+
+    <div class="line" data-delay="6000">The small one on the windowsill —</div>
+    <div class="line" data-delay="6800">I don't know what it is. I've had it four years.</div>
+    <div class="line gap" data-delay="7600">Just keep the soil damp. It likes morning light.</div>
+
+    <div class="line" data-delay="9200"><span class="crossed-out">Don't worry about the</span></div>
+    <div class="line gap" data-delay="9800">The herbs on the balcony are already dead. <span class="afterthought">Not your fault.</span></div>
+
+    <div class="line" data-delay="11500">There's a watering can under the kitchen sink</div>
+    <div class="line gap" data-delay="12200">but a glass works. <span class="added-later">a mug works too</span></div>
+
+    <div class="line" data-delay="13800">Thank you for doing this.</div>
+    <div class="line" data-delay="14800">The spare key fits weird — lift and turn.</div>
+    <div class="line gap" data-delay="15800">You'll think it's broken. It's not. Just <span class="underline">lift</span>.</div>
+
+    <div class="line" data-delay="17500" style="margin-top: 12px; font-size: 13px; color: #5a5549;">p.s. eat whatever's in the fridge. I mean it.</div>
+  </div>
+</div>
+
+<div class="plant"></div>
+
+<script>
+  const lines = document.querySelectorAll('.line');
+  const plant = document.querySelector('.plant');
+
+  lines.forEach(line => {
+    const delay = parseInt(line.getAttribute('data-delay'), 10);
+    setTimeout(() => {
+      line.classList.add('visible');
+    }, delay);
+  });
+
+  // The plant appears very slowly after all lines are read
+  setTimeout(() => {
+    plant.classList.add('visible');
+  }, 22000);
+
+  // No counter. No depletion. The note just stays.
+  // It was written once. It sits on the counter.
+  // You come back and it's still there, maybe with your own coffee ring on it.
+</script>
+
+</body>
+</html>
