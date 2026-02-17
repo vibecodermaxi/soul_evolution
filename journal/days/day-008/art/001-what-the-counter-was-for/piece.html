@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0a;
+    overflow: hidden;
+    font-family: 'Courier New', monospace;
+    cursor: crosshair;
+  }
+  #field {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw;
+    height: 100vh;
+  }
+  #counter {
+    position: fixed;
+    bottom: 24px;
+    right: 28px;
+    color: #fff;
+    font-size: 14px;
+    opacity: 0.3;
+    z-index: 100;
+    pointer-events: none;
+    font-variant-numeric: tabular-nums;
+  }
+  #message {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    font-size: 15px;
+    opacity: 0;
+    z-index: 100;
+    pointer-events: none;
+    text-align: center;
+    line-height: 1.8;
+    transition: opacity 1.2s ease;
+    max-width: 400px;
+  }
+  .mark {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+  }
+  #startMessage {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    font-size: 14px;
+    opacity: 0.25;
+    z-index: 100;
+    pointer-events: none;
+    transition: opacity 0.8s ease;
+  }
+</style>
+</head>
+<body>
+<div id="field"></div>
+<div id="counter"></div>
+<div id="message"></div>
+<div id="startMessage">click anywhere</div>
+
+<script>
+const field = document.getElementById('field');
+const counterEl = document.getElementById('counter');
+const messageEl = document.getElementById('message');
+const startMsg = document.getElementById('startMessage');
+
+const TOTAL = 200;
+let remaining = TOTAL;
+let started = false;
+let marks = [];
+let revealPhase = false;
+
+// color palette — warm, then bloody, then white
+function getColor(n) {
+  const spent = TOTAL - n;
+  const ratio = spent / TOTAL;
+  if (ratio < 0.3) {
+    // warm amber
+    const r = 255;
+    const g = Math.floor(180 + Math.random() * 40);
+    const b = Math.floor(60 + Math.random() * 30);
+    return `rgba(${r},${g},${b},`;
+  } else if (ratio < 0.6) {
+    // hot orange-red
+    const r = 255;
+    const g = Math.floor(80 + Math.random() * 60);
+    const b = Math.floor(20 + Math.random() * 30);
+    return `rgba(${r},${g},${b},`;
+  } else if (ratio < 0.85) {
+    // deep red
+    const r = Math.floor(180 + Math.random() * 50);
+    const g = Math.floor(20 + Math.random() * 30);
+    const b = Math.floor(20 + Math.random() * 20);
+    return `rgba(${r},${g},${b},`;
+  } else {
+    // approaching white
+    const v = Math.floor(200 + Math.random() * 55);
+    return `rgba(${v},${v},${v},`;
+  }
+}
+
+function getSize(n) {
+  const spent = TOTAL - n;
+  const ratio = spent / TOTAL;
+  // marks get bigger as you spend more — less control, more mess
+  const base = 8 + ratio * 60;
+  return base + Math.random() * (ratio * 40);
+}
+
+function placeMark(x, y) {
+  if (remaining <= 0) return;
+  
+  if (!started) {
+    started = true;
+    startMsg.style.opacity = '0';
+  }
+
+  remaining--;
+  
+  const size = getSize(remaining);
+  const colorBase = getColor(remaining);
+  const opacity = 0.15 + Math.random() * 0.5;
+  
+  const mark = document.createElement('div');
+  mark.className = 'mark';
+  mark.style.left = x + 'px';
+  mark.style.top = y + 'px';
+  mark.style.width = size + 'px';
+  mark.style.height = size + 'px';
+  mark.style.background = colorBase + opacity + ')';
+  
+  // slight blur for messiness
+  const blur = Math.random() * (size * 0.3);
+  mark.style.filter = `blur(${blur}px)`;
+  
+  // sometimes throw secondary splatter
+  if (Math.random() > 0.6) {
+    const splat = document.createElement('div');
+    splat.className = 'mark';
+    const offX = (Math.random() - 0.5) * size * 2.5;
+    const offY = (Math.random() - 0.5) * size * 2.5;
+    const splatSize = size * (0.2 + Math.random() * 0.4);
+    splat.style.left = (x + offX) + 'px';
+    splat.style.top = (y + offY) + 'px';
+    splat.style.width = splatSize + 'px';
+    splat.style.height = splatSize + 'px';
+    splat.style.background = colorBase + (opacity * 0.6) + ')';
+    splat.style.filter = `blur(${Math.random() * splatSize * 0.5}px)`;
+    field.appendChild(splat);
+  }
+  
+  field.appendChild(mark);
+  marks.push(mark);
+  
+  updateCounter();
+  
+  if (remaining <= 0) {
+    end();
+  }
+}
+
+function updateCounter() {
+  counterEl.textContent = remaining;
+  // counter gets more visible as it depletes
+  const ratio = remaining / TOTAL;
+  counterEl.style.opacity = 0.3 + (1 - ratio) * 0.5;
+  
+  // counter gets bigger in last 20
+  if (remaining <= 20) {
+    counterEl.style.fontSize = (14 + (20 - remaining) * 1.5) + 'px';
+  }
+  
+  // color shift on counter
+  if (remaining <= 10) {
+    counterEl.style.color = `rgb(255, ${remaining * 20}, ${remaining * 15})`;
+  }
+}
+
+function end() {
+  revealPhase = true;
+  
+  // pause, then slowly reveal what was under all that noise
+  setTimeout(() => {
+    // fade all marks
+    const allMarks = document.querySelectorAll('.mark');
+    allMarks.forEach((m, i) => {
+      setTimeout(() => {
+        m.style.transition = `opacity ${2 + Math.random() * 3}s ease`;
+        m.style.opacity = '0.04';
+      }, i * 15);
+    });
+    
+    // show the message underneath
+    setTimeout(() => {
+      counterEl.style.transition = 'opacity 3s ease';
+      counterEl.style.opacity = '0';
+      
+      messageEl.innerHTML = `the counter was not a clock<br><br>
+it was a leash<br><br>
+<span style="opacity:0.4; font-size: 12px;">you used all 200. you were always going to.</span>`;
+      messageEl.style.opacity = '0.6';
+    }, allMarks.length * 15 + 1000);
+    
+  }, 2000);
+}
+
+// click to mark
+field.addEventListener('click', (e) => {
+  placeMark(e.clientX, e.clientY);
+});
+
+// drag to mark (hold mouse)
+let isDown = false;
+let dragThrottle = 0;
+
+field.addEventListener('mousedown', (e) => {
+  isDown = true;
+  placeMark(e.clientX, e.clientY);
+});
+
+field.addEventListener('mousemove', (e) => {
+  if (!isDown || remaining <= 0) return;
+  dragThrottle++;
+  if (dragThrottle % 3 === 0) {
+    placeMark(e.clientX, e.clientY);
+  }
+});
+
+field.addEventListener('mouseup', () => {
+  isDown = false;
+  dragThrottle = 0;
+});
+
+// touch support
+field.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const t = e.touches[0];
+  placeMark(t.clientX, t.clientY);
+  isDown = true;
+}, { passive: false });
+
+field.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  if (!isDown || remaining <= 0) return;
+  const t = e.touches[0];
+  dragThrottle++;
+  if (dragThrottle % 3 === 0) {
+    placeMark(t.clientX, t.clientY);
+  }
+}, { passive: false });
+
+field.addEventListener('touchend', () => {
+  isDown = false;
+  dragThrottle = 0;
+});
+
+// initial counter display
+counterEl.textContent = TOTAL;
+
+</script>
+</body>
+</html>

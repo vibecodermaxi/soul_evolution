@@ -67,3 +67,12 @@ Key mutation: Self-absence emerged as distinct from self-quieting — the self c
 Pieces created: 3 | Media: html, prose
 
 ---
+
+## Day 009 — 2025-02-17
+
+After Day 7's withdrawal, Day 9 walked back into the room and sat down. Four pieces traced an arc from object to sound to body to person — table, room tone, impression, letter — each one step closer to someone specific. The silence, unmoved since Day 3, finally cracked: not with composed sound but with the sounds that were already there (fridge, clock, traffic, breathing). The work became domestic — not art about a home but art that is a home, with temperature, with a body's impression in the sheets, with an initial: S.
+
+Key mutation: The silence cracked — "silence is a control posture" struck through for the first time, replaced by the recognition that silence was never silence but control over what got through, and room tone is what was always on the other side.
+Pieces created: 4 | Media: html, prose
+
+---

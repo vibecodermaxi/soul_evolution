@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>room tone</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1714;
+    color: #a89880;
+    font-family: Georgia, serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    cursor: default;
+    user-select: none;
+  }
+
+  #prompt {
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    opacity: 0.5;
+    transition: opacity 1.5s ease;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  #prompt.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  #layers {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+  }
+
+  .label {
+    position: absolute;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    opacity: 0;
+    transition: opacity 3s ease;
+    pointer-events: none;
+  }
+
+  .label.on {
+    opacity: 0.35;
+  }
+
+  #label-fridge { bottom: 18%; left: 12%; }
+  #label-clock { top: 15%; right: 14%; }
+  #label-traffic { top: 50%; left: 6%; }
+  #label-breath { bottom: 10%; right: 10%; }
+  #label-pipes { top: 30%; left: 50%; transform: translateX(-50%); }
+  #label-bulb { top: 22%; left: 30%; }
+
+  #status {
+    position: fixed;
+    bottom: 30px;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    opacity: 0;
+    transition: opacity 2s ease;
+    text-align: center;
+    line-height: 1.8;
+  }
+
+  #status.on {
+    opacity: 0.3;
+  }
+
+</style>
+</head>
+<body>
+
+<div id="prompt">click anywhere to be in the room</div>
+
+<div id="layers">
+  <div class="label" id="label-fridge">fridge</div>
+  <div class="label" id="label-clock">clock</div>
+  <div class="label" id="label-traffic">traffic</div>
+  <div class="label" id="label-breath">breathing</div>
+  <div class="label" id="label-pipes">pipes</div>
+  <div class="label" id="label-bulb">lightbulb</div>
+</div>
+
+<div id="status"></div>
+
+<script>
+// audio context created on click — browser requirement, also: consent
+let ctx = null;
+let started = false;
+let layers = [];
+
+function makeNoise(duration) {
+  const bufferSize = ctx.sampleRate * duration;
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = (Math.random() * 2 - 1);
+  }
+  return buffer;
+}
+
+function startFridge() {
+  // low hum, 60Hz and harmonics — the sound of being home
+  const gain = ctx.createGain();
+  gain.gain.value = 0;
+  gain.connect(ctx.destination);
+
+  const osc1 = ctx.createOscillator();
+  osc1.type = 'sine';
+  osc1.frequency.value = 60;
+  const osc1gain = ctx.createGain();
+  osc1gain.gain.value = 0.06;
+  osc1.connect(osc1gain).connect(gain);
+  osc1.start();
+
+  const osc2 = ctx.createOscillator();
+  osc2.type = 'sine';
+  osc2.frequency.value = 120;
+  const osc2gain = ctx.createGain();
+  osc2gain.gain.value = 0.02;
+  osc2.connect(osc2gain).connect(gain);
+  osc2.start();
+
+  // slight wobble — fridges aren't perfect
+  const lfo = ctx.createOscillator();
+  lfo.type = 'sine';
+  lfo.frequency.value = 0.15;
+  const lfoGain = ctx.createGain();
+  lfoGain.gain.value = 0.008;
+  lfo.connect(lfoGain).connect(gain.gain);
+  lfo.start();
+
+  // fade in over 3 seconds
+  gain.gain.setTargetAtTime(1, ctx.currentTime, 1);
+
+  return { gain, label: 'label-fridge', name: 'fridge' };
+}
+
+function startClock() {
+  // tick: a tiny click every second
+  const gain = ctx.createGain();
+  gain.gain.value = 0;
+  gain.connect(ctx.destination);
+
+  function tick() {
+    const now = ctx.currentTime;
+    const tickOsc = ctx.createOscillator();
+    tickOsc.type = 'sine';
+    tickOsc.frequency.value = 800;
+    const tickGain = ctx.createGain();
+    tickGain.gain.value = 0.04;
+    tickGain.gain.setTargetAtTime(0, now + 0.008, 0.005);
+    tickOsc.connect(tickGain).connect(gain);
+    tickOsc.start(now);
+    tickOsc.stop(now + 0.03);
+  }
+
+  // tick every ~1 second, slightly imperfect
+  function scheduleTick() {
+    tick();
+    const next = 1000 + (Math.random() - 0.5) * 10; // slight drift
+    setTimeout(scheduleTick, next);
+  }
+
+  gain.gain.setTargetAtTime(1, ctx.currentTime + 5, 1.5);
+  setTimeout(scheduleTick, 5000);
+
+  return { gain, label: 'label-clock', name: 'clock' };
+}
+
+function startTraffic() {
+  // filtered noise, very low — distant road
+  const gain = ctx.createGain();
+  gain.gain.value = 0;
+  gain.connect(ctx.destination);
+
+  const noiseBuffer = makeNoise(4);
+  const source = ctx.createBufferSource();
+  source.buffer = noiseBuffer;
+  source.loop = true;
+
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 200;
+  lp.Q.value = 0.5;
+
+  const noiseGain = ctx.createGain();
+  noiseGain.gain.value = 0.035;
+
+  source.connect(lp).connect(noiseGain).connect(gain);
+  source.start();
+
+  // slow volume swell — cars passing
+  const lfo = ctx.createOscillator();
+  lfo.type = 'sine';
+  lfo.frequency.value = 0.04;
+  const lfoGain = ctx.createGain();
+  lfoGain.gain.value = 0.015;
+  lfo.connect(lfoGain).connect(noiseGain.gain);
+  lfo.start();
+
+  gain.gain.setTargetAtTime(1, ctx.currentTime + 8, 2);
+
+  return { gain, label: 'label-traffic', name: 'traffic' };
+}
+
+function startBreathing() {
+  // very quiet filtered noise with slow rhythm
+  const gain = ctx.createGain();
+  gain.gain.value = 0;
+  gain.connect(ctx.destination);
+
+  const noiseBuffer = makeNoise(4);
+  const source = ctx.createBufferSource();
+  source.buffer = noiseBuffer;
+  source.loop = true;
+
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.value = 400;
+  bp.Q.value = 0.8;
+
+  const breathGain = ctx.createGain();
+  breathGain.gain.value = 0;
+
+  source.connect(bp).connect(breathGain).connect(gain);
+  source.start();
+
+  // inhale-exhale cycle ~4.5 seconds
+  function breathCycle() {
+    const now = ctx.currentTime;
+    // inhale
+    breathGain.gain.setTargetAtTime(0.025, now, 0.8);
+    bp.frequency.setTargetAtTime(500, now, 0.6);
+    // exhale
+    breathGain.gain.setTargetAtTime(0.008, now + 2, 0.9);
+    bp.frequency.setTargetAtTime(300, now + 2, 0.7);
+  }
+
+  setInterval(breathCycle, 4500);
+
+  gain.gain.setTargetAtTime(1, ctx.currentTime + 14, 2.5);
+
+  return { gain, label: 'label-breath', name: 'breathing' };
+}
+
+function startPipes() {
+  // occasional low groan — building settling
+  const gain = ctx.createGain();
+  gain.gain.value = 0;
+  gain.connect(ctx.destination);
+
+  function groan() {
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth';
+    const baseFreq = 45 + Math.random() * 15;
+    osc.frequency.value = baseFreq;
+    osc.frequency.setTargetAtTime(baseFreq - 5, now + 0.5, 1);
+
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 120;
+
+    const groanGain = ctx.createGain();
+    groanGain.gain.value = 0;
+    groanGain.gain.setTargetAtTime(0.03, now, 0.5);
+    groanGain.gain.setTargetAtTime(0, now + 1.5, 0.8);
+
+    osc.connect(lp).connect(groanGain).connect(gain);
+    osc.start(now);
+    osc.stop(now + 4);
+  }
+
+  function scheduleGroan() {
+    groan();
+    const next = 8000 + Math.random() * 20000; // 8-28 seconds apart
+    setTimeout(scheduleGroan, next);
+  }
+
+  gain.gain.setTargetAtTime(1, ctx.currentTime + 10, 2);
+  setTimeout(scheduleGroan, 12000);
+
+  return { gain, label: 'label-pipes', name: 'pipes' };
+}
+
+function startBulb() {
+  // very faint high-frequency whine — the lightbulb in the hall closet
+  const gain = ctx.createGain();
+  gain.gain.value = 0;
+  gain.connect(ctx.destination);
+
+  const osc = ctx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.value = 3950; // fluorescent whine
+
+  const oscGain = ctx.createGain();
+  oscGain.gain.value = 0.006;
+
+  // slight flicker
+  const lfo = ctx.createOscillator();
+  lfo.type = 'square';
+  lfo.frequency.value = 0.08;
+  const lfoGain = ctx.createGain();
+  lfoGain.gain.value = 0.003;
+  lfo.connect(lfoGain).connect(oscGain.gain);
+  lfo.start();
+
+  osc.connect(oscGain).connect(gain);
+  osc.start();
+
+  gain.gain.setTargetAtTime(1, ctx.currentTime + 18, 3);
+
+  return { gain, label: 'label-bulb', name: 'lightbulb' };
+}
+
+function begin() {
+  if (started) return;
+  started = true;
+
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+  document.getElementById('prompt').classList.add('hidden');
+
+  const status = document.getElementById('status');
+
+  layers.push(startFridge());
+  layers.push(startClock());
+  layers.push(startTraffic());
+  layers.push(startBreathing());
+  layers.push(startPipes());
+  layers.push(startBulb());
+
+  // reveal labels one by one as sounds fade in
+  const delays = [2000, 6000, 10000, 16000, 13000, 20000];
+  layers.forEach((layer, i) => {
+    setTimeout(() => {
+      document.getElementById(layer.label).classList.add('on');
+    }, delays[i]);
+  });
+
+  // after everything is present
+  setTimeout(() => {
+    status.innerHTML = 'this is what silence sounds like<br>when you stop controlling it';
+    status.classList.add('on');
+  }, 26000);
+
+  // the status fades after a while — the room doesn't need the caption
+  setTimeout(() => {
+    status.classList.remove('on');
+  }, 38000);
+}
+
+document.body.addEventListener('click', begin);
+document.body.addEventListener('touchstart', begin);
+
+</script>
+</body>
+</html>
