@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Absolute path to the repo root
-REPO_DIR="/Users/puranjaysingh/Documents/Claude2026/soul-evolution"
+# Resolve repo root: use REPO_DIR env var, or derive from script location
+REPO_DIR="${REPO_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 cd "$REPO_DIR"
 
 echo "=== Soul Evolution — $(date) ==="
 
-# Load environment variables
+# Load .env if present (local dev); Railway injects env vars natively
 if [[ -f .env ]]; then
   set -a
   source .env
@@ -18,15 +18,22 @@ fi
 PIECES=$(( RANDOM % 2 + 3 ))
 echo "Today's pieces: $PIECES"
 
-# Run the orchestrator (local mode — no SOUL_REPO_URL)
-npx tsx src/index.ts --pieces "$PIECES"
+# Run the orchestrator
+# In remote mode (SOUL_REPO_URL set), it handles git clone/commit/push itself.
+# Use compiled JS if available, fall back to tsx for local dev.
+if [[ -f dist/index.js ]]; then
+  node dist/index.js --pieces "$PIECES"
+else
+  npx tsx src/index.ts --pieces "$PIECES"
+fi
 
-# Find the latest day directory for the commit message
-LATEST_DAY=$(ls -1d journal/days/day-* 2>/dev/null | sort -V | tail -1 | xargs basename)
-
-# Commit and push
-git add -A
-git commit -m "day: ${LATEST_DAY:-unknown} — autonomous evolution" || echo "Nothing to commit"
-git push origin main
+# Local mode only: commit and push if SOUL_REPO_URL is not set
+# (remote mode handles git operations internally)
+if [[ -z "${SOUL_REPO_URL:-}" ]]; then
+  LATEST_DAY=$(ls -1d journal/days/day-* 2>/dev/null | sort -V | tail -1 | xargs basename)
+  git add -A
+  git commit -m "day: ${LATEST_DAY:-unknown} — autonomous evolution" || echo "Nothing to commit"
+  git push origin main
+fi
 
 echo "=== Done — $(date) ==="

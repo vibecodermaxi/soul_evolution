@@ -1,0 +1,9 @@
+node_modules
+dist
+.env
+.git
+site
+*.md
+!soul/*.md
+!prompts/*.md
+!journal/**/*.md
