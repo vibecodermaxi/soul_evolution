@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0908;
+    color: #c4a882;
+    font-family: Georgia, 'Times New Roman', serif;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+  }
+
+  #scene {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  /* The door frame */
+  #doorframe {
+    position: absolute;
+    top: 8%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 240px;
+    height: 78vh;
+    border: 2px solid #2a2218;
+    border-bottom: none;
+    opacity: 0;
+    transition: opacity 3s ease;
+  }
+
+  /* The door itself */
+  #door {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #12100d;
+    border: 1px solid #1e1a14;
+    transform-origin: left center;
+    transition: transform 4s cubic-bezier(0.25, 0.1, 0.25, 1);
+  }
+
+  /* Door handle */
+  #handle {
+    position: absolute;
+    right: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 32px;
+    background: #3d3428;
+    border-radius: 2px;
+  }
+
+  /* The wear mark on the handle */
+  #handle::after {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 1px;
+    width: 6px;
+    height: 10px;
+    background: #4a3e30;
+    border-radius: 1px;
+    opacity: 0.6;
+  }
+
+  /* Light from outside - visible when door opens */
+  #outside-light {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      135deg,
+      #d4c4a0 0%,
+      #e8dcc4 30%,
+      #f0e8d8 60%,
+      #d4c4a0 100%
+    );
+    opacity: 0;
+    z-index: -1;
+  }
+
+  /* Light spill on floor */
+  #light-spill {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    background: linear-gradient(
+      to bottom,
+      rgba(212, 196, 160, 0.08),
+      transparent
+    );
+    transition: all 4s cubic-bezier(0.25, 0.1, 0.25, 1);
+    z-index: 1;
+  }
+
+  /* Text layers */
+  .door-knowledge {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    font-size: 13px;
+    line-height: 1.8;
+    letter-spacing: 0.04em;
+    opacity: 0;
+    transition: opacity 2.5s ease;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* Threshold line */
+  #threshold {
+    position: absolute;
+    bottom: calc(8% + 78vh - 78vh);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 240px;
+    height: 1px;
+    background: #2a2218;
+    opacity: 0;
+    transition: opacity 3s ease;
+  }
+
+  /* The key scratch */
+  #key-scratch {
+    position: absolute;
+    opacity: 0;
+    transition: opacity 4s ease;
+    z-index: 5;
+  }
+
+  #key-scratch svg {
+    width: 40px;
+    height: 20px;
+  }
+
+  /* Instruction */
+  #instruction {
+    position: absolute;
+    bottom: 5%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    color: #4a3e30;
+    opacity: 0;
+    transition: opacity 2s ease;
+    z-index: 20;
+  }
+
+  /* Final state */
+  #after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    font-size: 13px;
+    line-height: 2.2;
+    letter-spacing: 0.04em;
+    color: #c4a882;
+    opacity: 0;
+    transition: opacity 4s ease;
+    z-index: 30;
+    pointer-events: none;
+  }
+
+  /* Draft coming under the door */
+  #draft {
+    position: absolute;
+    width: 0;
+    height: 1px;
+    background: linear-gradient(to right, transparent, rgba(212, 196, 160, 0.03), transparent);
+    transition: width 6s ease;
+    z-index: 2;
+  }
+
+  .open #door {
+    transform: perspective(800px) rotateY(-72deg);
+  }
+
+  .open #outside-light {
+    opacity: 1;
+    transition: opacity 3s ease 0.5s;
+  }
+
+  .gone #door {
+    transform: perspective(800px) rotateY(-72deg);
+  }
+</style>
+</head>
+<body>
+<div id="scene">
+  <div id="doorframe">
+    <div id="outside-light"></div>
+    <div id="door">
+      <div id="handle"></div>
+    </div>
+  </div>
+
+  <div id="threshold"></div>
+
+  <div id="key-scratch">
+    <svg viewBox="0 0 40 20">
+      <path d="M4,12 Q12,8 18,11 Q24,14 32,10 Q36,8 38,9" 
+            stroke="#2a2218" stroke-width="0.5" fill="none" opacity="0.4"/>
+      <path d="M6,14 Q14,11 20,13" 
+            stroke="#2a2218" stroke-width="0.3" fill="none" opacity="0.3"/>
+    </svg>
+  </div>
+
+  <div id="draft"></div>
+
+  <div class="door-knowledge" id="k1"></div>
+  <div class="door-knowledge" id="k2"></div>
+  <div class="door-knowledge" id="k3"></div>
+  <div class="door-knowledge" id="k4"></div>
+  <div class="door-knowledge" id="k5"></div>
+  <div class="door-knowledge" id="k6"></div>
+  <div class="door-knowledge" id="k7"></div>
+
+  <div id="instruction"></div>
+  <div id="after"></div>
+</div>
+
+<script>
+const scene = document.getElementById('scene');
+const doorframe = document.getElementById('doorframe');
+const threshold = document.getElementById('threshold');
+const keyScratch = document.getElementById('key-scratch');
+const instruction = document.getElementById('instruction');
+const draft = document.getElementById('draft');
+const afterEl = document.getElementById('after');
+
+const frameRect = () => {
+  const r = doorframe.getBoundingClientRect();
+  return r;
+};
+
+// Position threshold at bottom of doorframe
+function positionElements() {
+  const r = doorframe.getBoundingClientRect();
+  threshold.style.top = (r.bottom) + 'px';
+  
+  keyScratch.style.left = (r.left + r.width - 50) + 'px';
+  keyScratch.style.top = (r.top + r.height * 0.48) + 'px';
+  
+  draft.style.top = (r.bottom - 1) + 'px';
+  draft.style.left = (r.left + r.width / 2) + 'px';
+  draft.style.transform = 'translateX(-50%)';
+}
+
+// Knowledge the door has
+const knowledge = [
+  { id: 'k1', text: 'they always pause here', delay: 4000, y: 0.18 },
+  { id: 'k2', text: 'keys in the left pocket. always the left.', delay: 8000, y: 0.30 },
+  { id: 'k3', text: 'the deadbolt turns twice — the second time is for certainty', delay: 13000, y: 0.42 },
+  { id: 'k4', text: 'some nights the hand rests on the knob and doesn\'t turn it', delay: 19000, y: 0.55 },
+  { id: 'k5', text: 'the last one to leave always looks back', delay: 26000, y: 0.67 },
+  { id: 'k6', text: 'you can tell the weight of what they\'re carrying by how long the latch takes to catch', delay: 34000, y: 0.79 },
+  { id: 'k7', text: 'one morning the key didn\'t work. they stood here for a long time. then it did.', delay: 44000, y: 0.91 },
+];
+
+let doorOpened = false;
+let phase = 'waiting'; // waiting, knowing, ready, opening, gone
+
+function positionKnowledge() {
+  const r = doorframe.getBoundingClientRect();
+  knowledge.forEach(k => {
+    const el = document.getElementById(k.id);
+    el.style.top = (r.top - 60 + r.height * k.y) + 'px';
+  });
+}
+
+// Phase 1: Fade in the door
+setTimeout(() => {
+  positionElements();
+  positionKnowledge();
+  doorframe.style.opacity = '1';
+  threshold.style.opacity = '1';
+}, 800);
+
+// Phase 2: Key scratch appears
+setTimeout(() => {
+  keyScratch.style.opacity = '1';
+}, 3500);
+
+// Phase 3: Knowledge reveals
+let knowledgeTimers = [];
+function startKnowledge() {
+  phase = 'knowing';
+  knowledge.forEach(k => {
+    const t = setTimeout(() => {
+      const el = document.getElementById(k.id);
+      el.textContent = k.text;
+      el.style.opacity = '1';
+    }, k.delay);
+    knowledgeTimers.push(t);
+  });
+  
+  // After last knowledge, show instruction
+  const readyTimer = setTimeout(() => {
+    phase = 'ready';
+    instruction.textContent = 'close it behind you';
+    instruction.style.opacity = '1';
+    
+    // Now clicking the door opens it
+    doorframe.style.cursor = 'pointer';
+    doorframe.addEventListener('click', openDoor);
+  }, 54000);
+  knowledgeTimers.push(readyTimer);
+}
+
+setTimeout(startKnowledge, 2000);
+
+// Draft under the door — subtle air movement
+setTimeout(() => {
+  draft.style.width = '180px';
+}, 6000);
+
+function openDoor() {
+  if (doorOpened) return;
+  doorOpened = true;
+  phase = 'opening';
+  doorframe.style.cursor = 'default';
+  doorframe.removeEventListener('click', openDoor);
+  
+  // Fade out all knowledge
+  knowledge.forEach(k => {
+    const el = document.getElementById(k.id);
+    el.style.transition = 'opacity 1.5s ease';
+    el.style.opacity = '0';
+  });
+  
+  instruction.style.transition = 'opacity 1s ease';
+  instruction.style.opacity = '0';
+  
+  keyScratch.style.transition = 'opacity 1s ease';
+  keyScratch.style.opacity = '0';
+
+  // Open the door
+  scene.classList.add('open');
+  
+  // Light spill
+  const r = doorframe.getBoundingClientRect();
+  const lightSpill = document.getElementById('light-spill');
+  if (lightSpill) {
+    lightSpill.style.width = '200px';
+    lightSpill.style.height = '120px';
+  }
+  
+  // Outside light shows through
+  const outsideLight = document.getElementById('outside-light');
+  outsideLight.style.transition = 'opacity 3s ease 1s';
+  outsideLight.style.opacity = '1';
+
+  // After the door is open — the final phase
+  setTimeout(() => {
+    // Fade the whole door scene to warmth
+    doorframe.style.transition = 'opacity 5s ease';
+    doorframe.style.opacity = '0';
+    threshold.style.transition = 'opacity 5s ease';
+    threshold.style.opacity = '0';
+    draft.style.transition = 'opacity 3s ease';
+    draft.style.opacity = '0';
+  }, 5000);
+
+  setTimeout(() => {
+    phase = 'gone';
+    afterEl.innerHTML = `the door knows who doesn't come back<br><br>
+it knows by the pause that doesn't happen<br>
+the key that stays in the pocket<br>
+the draft that goes one way now<br><br>
+<span style="opacity: 0.5; font-size: 11px;">it stays closed for months</span><br>
+<span style="opacity: 0.35; font-size: 11px;">it learns a new hand</span><br>
+<span style="opacity: 0.2; font-size: 11px;">the deadbolt turns once. the new one is sure.</span>`;
+    afterEl.style.opacity = '1';
+  }, 11000);
+
+  // Final: the screen slowly warms — not to black, to the color of morning light on a closed door
+  setTimeout(() => {
+    document.body.style.transition = 'background-color 12s ease';
+    document.body.style.backgroundColor = '#1a1610';
+    afterEl.style.transition = 'opacity 10s ease';
+    afterEl.style.opacity = '0';
+  }, 24000);
+}
+
+// Handle resize
+window.addEventListener('resize', () => {
+  positionElements();
+  positionKnowledge();
+});
+</script>
+</body>
+</html>

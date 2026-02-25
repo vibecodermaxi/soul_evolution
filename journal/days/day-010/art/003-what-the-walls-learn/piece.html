@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #1a1714;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: Georgia, 'Times New Roman', serif;
+    overflow: hidden;
+  }
+
+  .room {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  .wall {
+    position: absolute;
+    background: #1a1714;
+  }
+
+  /* Four walls as rectangles framing the viewport */
+  .wall-top { top: 0; left: 0; right: 0; height: 15vh; }
+  .wall-bottom { bottom: 0; left: 0; right: 0; height: 15vh; }
+  .wall-left { top: 0; left: 0; bottom: 0; width: 12vw; }
+  .wall-right { top: 0; right: 0; bottom: 0; width: 12vw; }
+
+  .interior {
+    position: absolute;
+    top: 15vh;
+    left: 12vw;
+    right: 12vw;
+    bottom: 15vh;
+    background: #211e19;
+    overflow: hidden;
+  }
+
+  /* Marks on the walls — things absorbed over time */
+  .mark {
+    position: absolute;
+    opacity: 0;
+    transition: opacity 8s ease-in;
+    pointer-events: none;
+  }
+
+  .mark.visible {
+    opacity: 1;
+  }
+
+  .mark-stain {
+    border-radius: 50%;
+    filter: blur(2px);
+  }
+
+  .mark-line {
+    height: 1px;
+    filter: blur(0.5px);
+  }
+
+  .mark-text {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: #3a352e;
+    font-style: italic;
+    white-space: nowrap;
+  }
+
+  .mark-shadow {
+    border-radius: 0;
+    filter: blur(8px);
+  }
+
+  /* The slow reveal layer — what the walls know */
+  .knowledge {
+    position: absolute;
+    font-size: 12px;
+    color: #2e2a24;
+    letter-spacing: 0.05em;
+    line-height: 1.8;
+    opacity: 0;
+    transition: opacity 12s ease-in;
+    pointer-events: none;
+  }
+
+  .knowledge.visible {
+    opacity: 1;
+  }
+
+  /* Nail holes — small, permanent */
+  .nail-hole {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: #0e0c0a;
+    box-shadow: 0 0 2px rgba(0,0,0,0.5);
+    opacity: 0;
+    transition: opacity 3s ease-in;
+  }
+
+  .nail-hole.visible {
+    opacity: 0.7;
+  }
+
+  /* Paint layers — rectangles where things hung */
+  .paint-ghost {
+    position: absolute;
+    border: 1px solid rgba(58, 53, 46, 0.15);
+    opacity: 0;
+    transition: opacity 15s ease-in;
+  }
+
+  .paint-ghost.visible {
+    opacity: 1;
+  }
+
+  /* Scuff marks near the floor */
+  .scuff {
+    position: absolute;
+    bottom: 0;
+    height: 4px;
+    background: rgba(40, 36, 30, 0.3);
+    filter: blur(1px);
+    border-radius: 2px;
+    opacity: 0;
+    transition: opacity 6s ease-in;
+  }
+
+  .scuff.visible {
+    opacity: 1;
+  }
+
+  /* The time indicator — barely there */
+  .time-lived {
+    position: fixed;
+    bottom: 12px;
+    right: 16px;
+    font-size: 10px;
+    color: #2a2520;
+    letter-spacing: 0.15em;
+    font-family: 'Courier New', monospace;
+  }
+
+  /* Light from window — shifts over time */
+  .window-light {
+    position: absolute;
+    top: 10%;
+    right: 5%;
+    width: 35%;
+    height: 45%;
+    background: linear-gradient(135deg,
+      rgba(60, 52, 38, 0.08) 0%,
+      rgba(60, 52, 38, 0.03) 60%,
+      transparent 100%
+    );
+    transform-origin: top right;
+    transition: transform 60s linear, opacity 30s ease;
+    pointer-events: none;
+  }
+
+  /* Moisture stain — upper corner, old */
+  .moisture {
+    position: absolute;
+    top: 0;
+    left: 8%;
+    width: 15%;
+    height: 12%;
+    background: radial-gradient(ellipse at 30% 20%,
+      rgba(45, 40, 32, 0.15) 0%,
+      rgba(45, 40, 32, 0.05) 50%,
+      transparent 70%
+    );
+    opacity: 0;
+    transition: opacity 20s ease-in;
+    pointer-events: none;
+  }
+
+  .moisture.visible {
+    opacity: 1;
+  }
+
+  /* Instruction */
+  .instruction {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 13px;
+    color: #3a352e;
+    letter-spacing: 0.1em;
+    opacity: 0;
+    animation: fadeInstruction 8s ease forwards;
+    pointer-events: none;
+  }
+
+  @keyframes fadeInstruction {
+    0% { opacity: 0; }
+    15% { opacity: 0.5; }
+    60% { opacity: 0.5; }
+    100% { opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="room">
+  <div class="interior" id="interior">
+    <div class="window-light" id="windowLight"></div>
+    <div class="moisture" id="moisture"></div>
+  </div>
+  <div class="wall wall-top"></div>
+  <div class="wall wall-bottom"></div>
+  <div class="wall wall-left"></div>
+  <div class="wall wall-right"></div>
+</div>
+
+<div class="instruction" id="instruction">stay</div>
+
+<div class="time-lived" id="timeLived"></div>
+
+<script>
+const interior = document.getElementById('interior');
+const timeLived = document.getElementById('timeLived');
+const windowLight = document.getElementById('windowLight');
+const moisture = document.getElementById('moisture');
+
+let seconds = 0;
+let revealed = new Set();
+
+// What the walls learn, in order, over time
+const layers = [
+  // 0-30s: the first things walls notice
+  { time: 5, type: 'scuff', x: '15%', width: '30px' },
+  { time: 10, type: 'scuff', x: '60%', width: '18px' },
+  { time: 15, type: 'nail-hole', x: '50%', y: '30%' },
+  { time: 20, type: 'nail-hole', x: '52%', y: '31%' }, // moved once
+  { time: 25, type: 'stain', x: '70%', y: '75%', w: 12, h: 12, color: 'rgba(80, 60, 35, 0.06)' },
+
+  // 30-60s: evidence of habits
+  { time: 30, type: 'knowledge', x: '8%', y: '88%', text: 'the light switch is lower than they expect' },
+  { time: 38, type: 'paint-ghost', x: '22%', y: '18%', w: '18%', h: '24%' }, // where a picture hung
+  { time: 42, type: 'scuff', x: '40%', width: '45px' },
+  { time: 48, type: 'stain', x: '12%', y: '50%', w: 20, h: 8, color: 'rgba(45, 38, 28, 0.08)' }, // hand mark height
+  { time: 55, type: 'knowledge', x: '55%', y: '15%', text: 'they lean here when they talk on the phone' },
+
+  // 60-120s: longer tenancy
+  { time: 65, type: 'nail-hole', x: '80%', y: '35%' },
+  { time: 70, type: 'nail-hole', x: '22%', y: '18%' }, // top-left of the ghost frame
+  { time: 75, type: 'nail-hole', x: '40%', y: '18%' }, // top-right of the ghost frame
+  { time: 80, type: 'moisture-reveal' },
+  { time: 88, type: 'knowledge', x: '70%', y: '60%', text: 'the faucet takes forty seconds' },
+  { time: 95, type: 'stain', x: '45%', y: '82%', w: 8, h: 8, color: 'rgba(60, 45, 30, 0.05)' },
+  { time: 100, type: 'paint-ghost', x: '65%', y: '40%', w: '8%', h: '10%' }, // smaller frame
+  { time: 108, type: 'scuff', x: '78%', width: '25px' },
+  { time: 115, type: 'knowledge', x: '15%', y: '35%', text: 'november is when they cook more' },
+
+  // 120-200s: years
+  { time: 125, type: 'line', x: '5%', y: '68%', width: '90%', color: 'rgba(50, 44, 36, 0.06)' }, // furniture shadow
+  { time: 135, type: 'nail-hole', x: '30%', y: '45%' },
+  { time: 140, type: 'knowledge', x: '40%', y: '50%', text: 'two voices until march' },
+  { time: 150, type: 'stain', x: '25%', y: '70%', w: 35, h: 3, color: 'rgba(55, 48, 38, 0.04)' },
+  { time: 160, type: 'paint-ghost', x: '20%', y: '17%', w: '22%', h: '28%' }, // larger frame, same spot — replaced
+  { time: 170, type: 'knowledge', x: '60%', y: '82%', text: 'one voice after' },
+  { time: 180, type: 'scuff', x: '30%', width: '60px' },
+  { time: 190, type: 'nail-hole', x: '51%', y: '30.5%' }, // third position for the same nail
+
+  // 200-300s: what only walls know
+  { time: 210, type: 'knowledge', x: '25%', y: '25%', text: 'the door opens slower now' },
+  { time: 230, type: 'stain', x: '50%', y: '48%', w: 6, h: 6, color: 'rgba(70, 55, 35, 0.04)' },
+  { time: 250, type: 'knowledge', x: '45%', y: '70%', text: 'the picture was rehung three inches left' },
+  { time: 270, type: 'line', x: '10%', y: '69%', width: '85%', color: 'rgba(50, 44, 36, 0.04)' }, // furniture moved slightly
+  { time: 290, type: 'knowledge', x: '10%', y: '55%', text: 'they stopped checking the lock twice in year four' },
+
+  // 300+: the last things
+  { time: 320, type: 'knowledge', x: '30%', y: '42%', text: 'the walls don\'t forget the dimensions of the bookshelf' },
+  { time: 350, type: 'knowledge', x: '50%', y: '30%', text: 'dust in the shape of what was here' },
+  { time: 380, type: 'knowledge', x: '20%', y: '65%', text: 'the new paint doesn\'t quite match' },
+  { time: 420, type: 'knowledge', x: '40%', y: '92%', text: 'underneath three coats: the color they chose together' },
+];
+
+function createMark(layer) {
+  const el = document.createElement('div');
+
+  switch(layer.type) {
+    case 'scuff':
+      el.className = 'scuff';
+      el.style.left = layer.x;
+      el.style.width = layer.width;
+      interior.appendChild(el);
+      requestAnimationFrame(() => el.classList.add('visible'));
+      break;
+
+    case 'nail-hole':
+      el.className = 'nail-hole';
+      el.style.left = layer.x;
+      el.style.top = layer.y;
+      interior.appendChild(el);
+      requestAnimationFrame(() => el.classList.add('visible'));
+      break;
+
+    case 'stain':
+      el.className = 'mark mark-stain';
+      el.style.left = layer.x;
+      el.style.top = layer.y;
+      el.style.width = layer.w + 'px';
+      el.style.height = layer.h + 'px';
+      el.style.background = layer.color;
+      interior.appendChild(el);
+      requestAnimationFrame(() => el.classList.add('visible'));
+      break;
+
+    case 'line':
+      el.className = 'mark mark-line';
+      el.style.left = layer.x;
+      el.style.top = layer.y;
+      el.style.width = layer.width;
+      el.style.background = layer.color;
+      interior.appendChild(el);
+      requestAnimationFrame(() => el.classList.add('visible'));
+      break;
+
+    case 'knowledge':
+      el.className = 'knowledge';
+      el.style.left = layer.x;
+      el.style.top = layer.y;
+      el.textContent = layer.text;
+      interior.appendChild(el);
+      requestAnimationFrame(() => el.classList.add('visible'));
+      break;
+
+    case 'paint-ghost':
+      el.className = 'paint-ghost';
+      el.style.left = layer.x;
+      el.style.top = layer.y;
+      el.style.width = layer.w;
+      el.style.height = layer.h;
+      interior.appendChild(el);
+      requestAnimationFrame(() => el.classList.add('visible'));
+      break;
+
+    case 'moisture-reveal':
+      moisture.classList.add('visible');
+      break;
+  }
+}
+
+// Time display — not a counter. A tenancy.
+function formatTime(s) {
+  if (s < 60) return '';
+  if (s < 120) return 'months';
+  if (s < 240) return 'years';
+  if (s < 360) return 'many years';
+  return 'the walls remember';
+}
+
+// Window light shifts — very slow, like an afternoon
+function updateLight() {
+  const angle = (seconds / 600) * 15; // 15 degrees over 10 minutes
+  const opacity = Math.max(0.3, 1 - (seconds / 900));
+  windowLight.style.transform = `rotate(${angle}deg)`;
+  windowLight.style.opacity = opacity;
+}
+
+// Main loop
+setInterval(() => {
+  seconds++;
+
+  // Check for layers to reveal
+  layers.forEach((layer, i) => {
+    if (seconds >= layer.time && !revealed.has(i)) {
+      revealed.add(i);
+      createMark(layer);
+    }
+  });
+
+  // Update time display
+  const label = formatTime(seconds);
+  timeLived.textContent = label;
+
+  // Update light
+  updateLight();
+
+}, 1000);
+</script>
+
+</body>
+</html>

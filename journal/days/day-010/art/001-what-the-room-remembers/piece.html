@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0908;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Georgia, 'Times New Roman', serif;
+  }
+
+  canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .text-layer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 40px;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  .text-line {
+    color: rgba(180, 150, 120, 0);
+    font-size: 14px;
+    line-height: 2.2;
+    letter-spacing: 0.04em;
+    transition: color 8s ease;
+    max-width: 480px;
+  }
+
+  .text-line.visible {
+    color: rgba(180, 150, 120, 0.35);
+  }
+
+  .text-line.fading {
+    color: rgba(180, 150, 120, 0.12);
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="text-layer" id="textLayer"></div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+let W, H;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// The room remembers heat in specific places.
+// A body sat here. A hand rested there. A cup.
+// Each memory is a thermal ghost — warmth that lingers
+// after the source has gone.
+
+const memories = [];
+
+// The places a body was
+function createMemories() {
+  memories.length = 0;
+
+  // where someone sat — center-right, chair height
+  memories.push({
+    x: W * 0.58,
+    y: H * 0.55,
+    radiusX: W * 0.12,
+    radiusY: H * 0.18,
+    intensity: 0.7,
+    warmth: { r: 200, g: 140, b: 90 },
+    drift: 0.0003,
+    phase: 0,
+    cooling: 0.000008, // barely cooling
+    label: 'sat here'
+  });
+
+  // where a hand rested on the table
+  memories.push({
+    x: W * 0.45,
+    y: H * 0.48,
+    radiusX: W * 0.05,
+    radiusY: H * 0.035,
+    intensity: 0.5,
+    warmth: { r: 210, g: 155, b: 110 },
+    drift: 0.0005,
+    phase: 1.2,
+    cooling: 0.000015,
+    label: 'hand'
+  });
+
+  // the cup — small, warm, specific
+  memories.push({
+    x: W * 0.38,
+    y: H * 0.44,
+    radiusX: W * 0.025,
+    radiusY: H * 0.025,
+    intensity: 0.85,
+    warmth: { r: 220, g: 165, b: 100 },
+    drift: 0.0002,
+    phase: 2.5,
+    cooling: 0.000005, // the cup cools slowest
+    label: 'cup'
+  });
+
+  // where feet were — lower, wider, fainter
+  memories.push({
+    x: W * 0.55,
+    y: H * 0.78,
+    radiusX: W * 0.08,
+    radiusY: H * 0.04,
+    intensity: 0.25,
+    warmth: { r: 170, g: 120, b: 85 },
+    drift: 0.0004,
+    phase: 3.8,
+    cooling: 0.00003,
+    label: 'feet'
+  });
+
+  // where breath warmed the air — above the sitting place
+  memories.push({
+    x: W * 0.56,
+    y: H * 0.38,
+    radiusX: W * 0.09,
+    radiusY: H * 0.1,
+    intensity: 0.15,
+    warmth: { r: 185, g: 135, b: 100 },
+    drift: 0.0008,
+    phase: 0.7,
+    cooling: 0.00004, // breath dissipates faster
+    label: 'breath'
+  });
+
+  // the impression in the chair back
+  memories.push({
+    x: W * 0.62,
+    y: H * 0.45,
+    radiusX: W * 0.04,
+    radiusY: H * 0.12,
+    intensity: 0.35,
+    warmth: { r: 190, g: 130, b: 88 },
+    drift: 0.0003,
+    phase: 4.1,
+    cooling: 0.00001,
+    label: 'back'
+  });
+
+  // something on the far side — maybe where a second person wasn't
+  // the absence of heat is also information
+  memories.push({
+    x: W * 0.22,
+    y: H * 0.55,
+    radiusX: W * 0.1,
+    radiusY: H * 0.15,
+    intensity: -0.08, // negative: cooler than ambient
+    warmth: { r: 60, g: 70, b: 90 },
+    drift: 0.0001,
+    phase: 5.0,
+    cooling: 0,
+    label: 'empty chair'
+  });
+}
+
+createMemories();
+window.addEventListener('resize', () => { resize(); createMemories(); });
+
+// Ambient particles — dust in light, almost invisible
+const particles = [];
+for (let i = 0; i < 60; i++) {
+  particles.push({
+    x: Math.random() * 2,
+    y: Math.random(),
+    vx: (Math.random() - 0.5) * 0.00008,
+    vy: -Math.random() * 0.00005 - 0.00001,
+    size: Math.random() * 1.5 + 0.5,
+    opacity: Math.random() * 0.08 + 0.01,
+    phase: Math.random() * Math.PI * 2
+  });
+}
+
+let startTime = Date.now();
+let lastTime = 0;
+
+// Text fragments — things the room knows
+const fragments = [
+  "the chair is still warm",
+  "forty seconds for hot water",
+  "the cup was set down without looking",
+  "left hand",
+  "the other chair was pulled out but not sat in",
+  "breathing changed once — deeper — then back",
+  "the light from the window moved six inches while they were here",
+  "sock feet",
+  "they almost said something",
+  "the fridge cycled twice"
+];
+
+let currentFragment = -1;
+let nextFragmentTime = 12000;
+const textLayer = document.getElementById('textLayer');
+let shownElements = [];
+
+function showFragment() {
+  currentFragment++;
+  if (currentFragment >= fragments.length) return;
+
+  const el = document.createElement('div');
+  el.className = 'text-line';
+  el.textContent = fragments[currentFragment];
+  textLayer.appendChild(el);
+  shownElements.push({ el, shownAt: Date.now() });
+
+  requestAnimationFrame(() => {
+    el.classList.add('visible');
+  });
+
+  // Schedule fade of previous fragments
+  shownElements.forEach((item, i) => {
+    if (i < shownElements.length - 2) {
+      item.el.classList.remove('visible');
+      item.el.classList.add('fading');
+    }
+  });
+
+  // Next fragment — irregular intervals, like remembering
+  const base = 8000;
+  const variance = Math.random() * 12000;
+  nextFragmentTime = Date.now() + base + variance;
+}
+
+function drawThermalField(time) {
+  const elapsed = (time - startTime) / 1000;
+
+  // Dark base
+  ctx.fillStyle = '#0a0908';
+  ctx.fillRect(0, 0, W, H);
+
+  // Draw each thermal memory as overlapping radial gradients
+  // Using compositing for warmth accumulation
+  ctx.globalCompositeOperation = 'screen';
+
+  memories.forEach(mem => {
+    const cooled = Math.max(0, mem.intensity - (elapsed * mem.cooling));
+    if (Math.abs(cooled) < 0.001 && mem.intensity > 0) return;
+
+    const breathe = Math.sin(elapsed * mem.drift * 200 + mem.phase) * 0.08 + 1;
+    const rx = mem.radiusX * breathe;
+    const ry = mem.radiusY * breathe;
+
+    // Slight thermal drift — heat rises, shifts
+    const driftX = Math.sin(elapsed * mem.drift * 100 + mem.phase) * 8;
+    const driftY = -elapsed * 0.02 + Math.cos(elapsed * mem.drift * 80 + mem.phase) * 5;
+
+    const cx = mem.x + driftX;
+    const cy = mem.y + driftY;
+
+    if (mem.intensity < 0) {
+      // Cool spot — subtract warmth
+      ctx.globalCompositeOperation = 'multiply';
+      const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry));
+      const abs = Math.abs(cooled || mem.intensity);
+      gradient.addColorStop(0, `rgba(${mem.warmth.r}, ${mem.warmth.g}, ${mem.warmth.b}, ${abs * 0.5})`);
+      gradient.addColorStop(0.6, `rgba(${mem.warmth.r}, ${mem.warmth.g}, ${mem.warmth.b}, ${abs * 0.2})`);
+      gradient.addColorStop(1, 'rgba(10, 9, 8, 0)');
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(1, ry / rx);
+      ctx.translate(-cx, -cy);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(cx - rx * 2, cy - ry * 2 * (rx/ry), rx * 4, ry * 4 * (rx/ry));
+      ctx.restore();
+      ctx.globalCompositeOperation = 'screen';
+      return;
+    }
+
+    const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry));
+
+    const r = mem.warmth.r;
+    const g = mem.warmth.g;
+    const b = mem.warmth.b;
+    const a = cooled;
+
+    gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${a * 0.18})`);
+    gradient.addColorStop(0.3, `rgba(${r}, ${g}, ${b}, ${a * 0.1})`);
+    gradient.addColorStop(0.7, `rgba(${r}, ${g}, ${b}, ${a * 0.03})`);
+    gradient.addColorStop(1, 'rgba(10, 9, 8, 0)');
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(1, ry / rx);
+    ctx.translate(-cx, -cy);
+    ctx.fillStyle = gradient;
+    ctx.fillRect(cx - rx * 2, cy - ry * 2 * (rx/ry), rx * 4, ry * 4 * (rx/ry));
+    ctx.restore();
+
+    // Second pass — tighter, warmer core
+    const gradient2 = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry) * 0.5);
+    gradient2.addColorStop(0, `rgba(${Math.min(255,r+30)}, ${Math.min(255,g+20)}, ${b}, ${a * 0.1})`);
+    gradient2.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${a * 0.04})`);
+    gradient2.addColorStop(1, 'rgba(10, 9, 8, 0)');
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(1, ry / rx);
+    ctx.translate(-cx, -cy);
+    ctx.fillStyle = gradient2;
+    ctx.fillRect(cx - rx * 2, cy - ry * 2 * (rx/ry), rx * 4, ry * 4 * (rx/ry));
+    ctx.restore();
+  });
+
+  // Particles — dust catching residual warmth
+  ctx.globalCompositeOperation = 'screen';
+  particles.forEach(p => {
+    p.x += p.vx + Math.sin(elapsed * 0.3 + p.phase) * 0.00003;
+    p.y += p.vy;
+
+    if (p.y < -0.05) { p.y = 1.05; p.x = Math.random() * 2; }
+    if (p.x < -0.05 || p.x > 1.05) { p.x = Math.random(); p.y = Math.random(); }
+
+    const px = p.x * W;
+    const py = p.y * H;
+
+    // Check if particle is in a warm zone
+    let warmth = 0;
+    memories.forEach(mem => {
+      if (mem.intensity < 0) return;
+      const dx = (px - mem.x) / mem.radiusX;
+      const dy = (py - mem.y) / mem.radiusY;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < 2) {
+        const cooled = Math.max(0, mem.intensity - (elapsed * mem.cooling));
+        warmth += cooled * Math.max(0, 1 - dist / 2) * 0.5;
+      }
+    });
+
+    const baseOpacity = p.opacity * (1 + warmth * 3);
+    const r = 180 + warmth * 60;
+    const g = 150 + warmth * 30;
+    const b = 120;
+
+    ctx.beginPath();
+    ctx.arc(px, py, p.size, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${Math.min(255,r|0)}, ${Math.min(255,g|0)}, ${b}, ${Math.min(0.15, baseOpacity)})`;
+    ctx.fill();
+  });
+
+  ctx.globalCompositeOperation = 'source-over';
+
+  // Very faint grain overlay
+  if (Math.random() < 0.3) {
+    const imageData = ctx.getImageData(0, 0, W, H);
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 16) { // sparse for performance
+      const noise = (Math.random() - 0.5) * 3;
+      data[i] = Math.max(0, Math.min(255, data[i] + noise));
+      data[i+1] = Math.max(0, Math.min(255, data[i+1] + noise));
+      data[i+2] = Math.max(0, Math.min(255, data[i+2] + noise));
+    }
+    ctx.putImageData(imageData, 0, 0);
+  }
+}
+
+function animate(time) {
+  if (!lastTime) lastTime = time;
+  const now = Date.now();
+
+  drawThermalField(now);
+
+  // Text timing
+  if (now > nextFragmentTime && currentFragment < fragments.length - 1) {
+    showFragment();
+  } else if (currentFragment === -1 && now - startTime > 4000) {
+    showFragment();
+  }
+
+  requestAnimationFrame(animate);
+}
+
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

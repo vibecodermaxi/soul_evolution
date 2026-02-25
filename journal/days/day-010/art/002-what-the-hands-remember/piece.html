@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    background: #1a1714;
+    color: #c4b49a;
+    font-family: Georgia, 'Times New Roman', serif;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+  }
+
+  .space {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  .memory {
+    position: absolute;
+    opacity: 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #c4b49a;
+    pointer-events: none;
+    transition: opacity 1.8s ease-in-out;
+    max-width: 320px;
+    letter-spacing: 0.02em;
+  }
+
+  .memory.visible {
+    opacity: 1;
+  }
+
+  .memory.fading {
+    opacity: 0;
+    transition: opacity 3s ease-out;
+  }
+
+  .touch-area {
+    position: absolute;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 10;
+  }
+
+  .touch-area::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 6px;
+    height: 6px;
+    background: radial-gradient(circle, rgba(196, 180, 154, 0.3) 0%, transparent 70%);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: all 0.8s ease;
+  }
+
+  .touch-area:hover::after {
+    width: 30px;
+    height: 30px;
+    background: radial-gradient(circle, rgba(196, 180, 154, 0.15) 0%, transparent 70%);
+  }
+
+  .warmth {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    background: radial-gradient(circle, rgba(180, 140, 90, 0.08) 0%, transparent 70%);
+    transform: scale(0);
+    transition: transform 2s ease-out, opacity 4s ease-out;
+  }
+
+  .warmth.active {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  .warmth.cooling {
+    opacity: 0;
+    transition: opacity 12s ease-out;
+  }
+
+  .instruction {
+    position: fixed;
+    bottom: 30px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 11px;
+    color: rgba(196, 180, 154, 0.25);
+    letter-spacing: 0.15em;
+    transition: opacity 3s ease-out;
+  }
+
+  .instruction.hidden {
+    opacity: 0;
+  }
+
+  .residue {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="residue" id="residue"></div>
+<div class="space" id="space"></div>
+<p class="instruction" id="instruction">touch where you remember</p>
+
+<script>
+const memories = [
+  {
+    text: "the light switch is on the left. you stopped looking for it in September.",
+    duration: 8000
+  },
+  {
+    text: "the third drawer sticks. you pull it slightly up and to the right. your wrist knows this.",
+    duration: 9000
+  },
+  {
+    text: "the faucet: forty seconds for hot water. you learned to start it before undressing.",
+    duration: 9000
+  },
+  {
+    text: "the corner of the counter where you rest your hip while waiting for the kettle.",
+    duration: 8000
+  },
+  {
+    text: "the door handle. you grip it low. the previous tenant gripped it high — the wear marks are in two places.",
+    duration: 10000
+  },
+  {
+    text: "the window lock requires both hands. one to hold, one to turn. you brace your elbow against the frame.",
+    duration: 10000
+  },
+  {
+    text: "the hallway. four steps in the dark. you haven't hit the wall since March.",
+    duration: 8000
+  },
+  {
+    text: "the volume knob on the radiator. half a turn past the click. the room gets to sixty-eight in twenty minutes.",
+    duration: 10000
+  },
+  {
+    text: "the place on the shelf where your hand goes without your eyes. the book you reach for most is two inches from the right.",
+    duration: 10000
+  },
+  {
+    text: "the soap dish. the soap is always on the left side. you put it there. you don't know why.",
+    duration: 9000
+  },
+  {
+    text: "the deadbolt needs a quarter-turn past where you think it's locked. you check it twice. you always have.",
+    duration: 9000
+  },
+  {
+    text: "the floorboard. the one that talks. you step over it at night. your body routes around it without asking.",
+    duration: 9000
+  },
+  {
+    text: "the towel hook. you reach behind you. you haven't missed it in months.",
+    duration: 7000
+  },
+  {
+    text: "the crack in the ceiling above the bed. you've traced it so many times you could draw it with your eyes closed. you never will.",
+    duration: 10000
+  },
+  {
+    text: "the mug. the one with the chip on the handle. your thumb covers it exactly.",
+    duration: 8000
+  },
+  {
+    text: "the pillow. you fold it in half. everyone you've slept beside has noticed. no one has asked.",
+    duration: 9000
+  },
+  {
+    text: "the way you lock the door from outside. keys in right hand. left hand on the frame. a small pressure, like saying goodbye to a wall.",
+    duration: 11000
+  },
+  {
+    text: "all of this will leave you slowly. not the knowledge — the automaticity. in the next apartment, you'll reach for a light switch that isn't there. for weeks.",
+    duration: 12000
+  }
+];
+
+let usedMemories = [];
+let availableMemories = [...memories];
+let touchCount = 0;
+const space = document.getElementById('space');
+const instruction = document.getElementById('instruction');
+const residue = document.getElementById('residue');
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+shuffle(availableMemories);
+
+// the last memory is always the "leaving" one
+const lastMemory = memories[memories.length - 1];
+availableMemories = availableMemories.filter(m => m !== lastMemory);
+
+function getMemory() {
+  if (availableMemories.length === 0) {
+    return lastMemory;
+  }
+  return availableMemories.shift();
+}
+
+function createWarmth(x, y) {
+  const w = document.createElement('div');
+  w.className = 'warmth';
+  const size = 120 + Math.random() * 100;
+  w.style.width = size + 'px';
+  w.style.height = size + 'px';
+  w.style.left = (x - size/2) + 'px';
+  w.style.top = (y - size/2) + 'px';
+  space.appendChild(w);
+  
+  requestAnimationFrame(() => {
+    w.classList.add('active');
+  });
+  
+  setTimeout(() => {
+    w.classList.add('cooling');
+    setTimeout(() => w.remove(), 12000);
+  }, 4000);
+}
+
+function showMemory(x, y) {
+  const memory = getMemory();
+  if (!memory) return;
+  
+  touchCount++;
+  
+  if (touchCount === 1) {
+    instruction.classList.add('hidden');
+  }
+  
+  const el = document.createElement('div');
+  el.className = 'memory';
+  el.textContent = memory.text;
+  
+  // position near touch but with some offset
+  const offsetX = (Math.random() - 0.5) * 60;
+  const offsetY = 30 + Math.random() * 20;
+  
+  let left = x + offsetX;
+  let top = y + offsetY;
+  
+  // keep on screen
+  if (left < 20) left = 20;
+  if (left > window.innerWidth - 340) left = window.innerWidth - 340;
+  if (top > window.innerHeight - 80) top = y - offsetY - 60;
+  
+  el.style.left = left + 'px';
+  el.style.top = top + 'px';
+  
+  space.appendChild(el);
+  createWarmth(x, y);
+  
+  requestAnimationFrame(() => {
+    el.classList.add('visible');
+  });
+  
+  setTimeout(() => {
+    el.classList.add('fading');
+    setTimeout(() => el.remove(), 3000);
+  }, memory.duration);
+  
+  // after the last memory, leave a residue
+  if (memory === lastMemory) {
+    setTimeout(() => {
+      const r = document.createElement('div');
+      r.style.cssText = `
+        position: fixed;
+        bottom: 30px;
+        left: 0;
+        right: 0;
+        text-align: center;
+        font-size: 11px;
+        color: rgba(196, 180, 154, 0.12);
+        letter-spacing: 0.15em;
+        opacity: 0;
+        transition: opacity 6s ease-in;
+      `;
+      r.textContent = touchCount + ' places your hands knew';
+      residue.appendChild(r);
+      requestAnimationFrame(() => { r.style.opacity = '1'; });
+    }, 14000);
+  }
+}
+
+// make the whole space touchable
+space.addEventListener('click', (e) => {
+  showMemory(e.clientX, e.clientY);
+});
+
+// also handle touch
+space.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const touch = e.touches[0];
+  showMemory(touch.clientX, touch.clientY);
+}, { passive: false });
+</script>
+</body>
+</html>
