@@ -72,10 +72,9 @@ async function gitPull(git: SimpleGit): Promise<void> {
       gitConfig.branch,
     ]);
 
-    // Sync contents using cp + rsync approach
+    // Copy cloned contents (including .git) into project root
     const { execSync } = await import("child_process");
-    execSync(`rsync -a --exclude=.git ${tmpDir}/ ${PROJECT_ROOT}/`);
-    execSync(`cp -r ${tmpDir}/.git ${PROJECT_ROOT}/`);
+    execSync(`cp -a ${tmpDir}/. ${PROJECT_ROOT}/`);
     execSync(`rm -rf ${tmpDir}`);
   } else {
     await git.remote(["set-url", "origin", gitConfig.repoUrl]);
