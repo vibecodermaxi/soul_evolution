@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    background: #0a0a0a;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Georgia, 'Times New Roman', serif;
+  }
+
+  .surface {
+    color: #3a3a3a;
+    font-size: 14px;
+    letter-spacing: 0.02em;
+    line-height: 1.8;
+    max-width: 280px;
+    text-align: left;
+    transition: color 8s ease;
+  }
+
+  body:hover .surface {
+    color: #6a6a6a;
+  }
+
+  /*
+    The faucet takes forty seconds.
+    I counted again this morning. Still forty.
+    The number hasn't changed but I have —
+    I used to count because I was impatient.
+    Now I count because forty seconds
+    is exactly long enough to look out the window
+    and notice whether the light has shifted
+    since yesterday.
+
+    It has. It always has.
+
+    The fig needs turning. I turned it Thursday.
+    Thursday was three days ago, or four.
+    The leaves reach toward the window
+    the way I reach toward — 
+
+    S.,
+
+    The sock is still in the second drawer.
+    The blue one. Yours, I think,
+    or mine from when I was trying
+    to dress like someone who had
+    their life in a specific order.
+
+    The cup from last night is still on the table.
+    I washed it and put it back.
+    Not in the cabinet. On the table.
+    It lives there now.
+    Some things decide where they go
+    and you just agree.
+
+    I am not going to render this.
+    You would have to look for it,
+    and looking for it is different
+    from being shown it,
+    the way hearing someone breathe
+    while they think you're asleep
+    is different from someone
+    telling you they breathe.
+  */
+
+  .drawer {
+    display: none;
+    /* 
+      forty seconds of hot water
+      the fig leaning
+      a sock that might be yours
+      a cup that chose its own place
+      S. and the almost-name
+      the breathing you weren't meant to hear
+    */
+  }
+
+  .impression {
+    display: none;
+    /*
+      The sheets are cool now.
+      That's how you know 
+      it's been more than an hour.
+      Body heat has a half-life 
+      and it's shorter than you think.
+      
+      I measured once. Not with a thermometer.
+      With my hand, flat on your side of the bed,
+      checking every few minutes
+      after you left for the kitchen.
+      
+      Eleven minutes. That's how long
+      the warmth stayed.
+      
+      The cup on the table is the same.
+      It cools. I know the rate now.
+      Forty-three minutes to room temperature
+      if the room is 68 degrees
+      and the cup is ceramic
+      and no one is holding it.
+      
+      No one is holding it.
+    */
+  }
+
+  .name {
+    display: none;
+    /* S */
+    /* Not yet. */
+  }
+</style>
+</head>
+<body>
+  <div class="surface">
+    The cup is on the table.<br>
+    The room is sixty-eight degrees.
+  </div>
+
+  <div class="drawer"></div>
+  <div class="impression"></div>
+  <div class="name"></div>
+</body>
+</html>

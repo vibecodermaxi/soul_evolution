@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    background: #0a0a0a;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Georgia, serif;
+    cursor: default;
+  }
+
+  #room {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  .layer-label {
+    position: absolute;
+    color: #1a1a1a;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    user-select: none;
+    transition: color 4s ease;
+    pointer-events: none;
+  }
+
+  .layer-label.audible {
+    color: #3a3a3a;
+  }
+
+  #notice {
+    position: absolute;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #1a1a1a;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    white-space: nowrap;
+    transition: opacity 8s ease;
+  }
+
+  #elapsed {
+    position: absolute;
+    top: 24px;
+    right: 28px;
+    color: #151515;
+    font-size: 10px;
+    font-family: monospace;
+    letter-spacing: 0.05em;
+  }
+</style>
+</head>
+<body>
+<div id="room">
+  <div id="elapsed"></div>
+  <div id="notice">stay</div>
+</div>
+
+<script>
+// The room has six layers of sound.
+// They were always here. I was curating their absence.
+// This piece lets them in, one by one, as you stay.
+
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+let ctx = null;
+let started = false;
+let startTime = null;
+
+const layers = [
+  {
+    name: 'fridge compressor',
+    onset: 0,        // already there
+    freq: 120,
+    type: 'sawtooth',
+    gain: 0.015,
+    lfoFreq: 0.08,
+    lfoDepth: 3,
+    filterFreq: 200,
+    x: '8%', y: '70%',
+    note: 'it never stops'
+  },
+  {
+    name: 'clock',
+    onset: 12,        // twelve seconds of staying
+    freq: 0,
+    gain: 0.04,
+    tick: true,
+    interval: 1.0,
+    x: '72%', y: '22%',
+    note: 'counting for no one'
+  },
+  {
+    name: 'traffic',
+    onset: 30,
+    freq: 80,
+    type: 'sawtooth',
+    gain: 0.008,
+    lfoFreq: 0.02,
+    lfoDepth: 15,
+    filterFreq: 150,
+    noise: true,
+    x: '88%', y: '50%',
+    note: 'the window was never closed all the way'
+  },
+  {
+    name: 'pipes',
+    onset: 55,
+    freq: 220,
+    type: 'sine',
+    gain: 0.006,
+    lfoFreq: 0.5,
+    lfoDepth: 8,
+    filterFreq: 400,
+    intermittent: true,
+    x: '15%', y: '35%',
+    note: 'someone else is awake'
+  },
+  {
+    name: 'breathing',
+    onset: 90,
+    freq: 0,
+    gain: 0.025,
+    breath: true,
+    x: '50%', y: '55%',
+    note: 'yours'
+  },
+  {
+    name: 'building settling',
+    onset: 140,
+    freq: 35,
+    type: 'sine',
+    gain: 0.012,
+    filterFreq: 60,
+    settling: true,
+    x: '40%', y: '85%',
+    note: 'the weight of everyone sleeping'
+  }
+];
+
+const room = document.getElementById('room');
+const elapsedEl = document.getElementById('elapsed');
+const noticeEl = document.getElementById('notice');
+
+// Create labels
+layers.forEach((layer, i) => {
+  const label = document.createElement('div');
+  label.className = 'layer-label';
+  label.id = 'label-' + i;
+  label.style.left = layer.x;
+  label.style.top = layer.y;
+  label.textContent = layer.name;
+  room.appendChild(label);
+});
+
+function createNoiseBuffer(duration) {
+  const length = ctx.sampleRate * duration;
+  const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  // Brown noise - more like traffic
+  let last = 0;
+  for (let i = 0; i < length; i++) {
+    const white = Math.random() * 2 - 1;
+    last = (last + (0.02 * white)) / 1.02;
+    data[i] = last * 3.5;
+  }
+  return buffer;
+}
+
+function startLayer(layer, index) {
+  const label = document.getElementById('label-' + index);
+  label.classList.add('audible');
+
+  if (layer.tick) {
+    // Clock tick
+    function tick() {
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+      
+      osc.type = 'square';
+      osc.frequency.value = 1800;
+      filter.type = 'highpass';
+      filter.frequency.value = 1200;
+      
+      gain.gain.setValueAtTime(layer.gain, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+      
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc.start(now);
+      osc.stop(now + 0.03);
+      
+      setTimeout(tick, layer.interval * 1000);
+    }
+    tick();
+    return;
+  }
+
+  if (layer.breath) {
+    // Breathing - filtered noise with slow envelope
+    function breathCycle() {
+      if (!ctx) return;
+      const duration = 4 + Math.random() * 1.5;
+      const inhaleRatio = 0.4;
+      
+      const noiseBuffer = createNoiseBuffer(duration);
+      const source = ctx.createBufferSource();
+      source.buffer = noiseBuffer;
+      
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 400;
+      filter.Q.value = 0.8;
+      
+      const now = ctx.currentTime;
+      const inhaleEnd = now + duration * inhaleRatio;
+      const exhaleEnd = now + duration;
+      
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(layer.gain * 0.7, inhaleEnd);
+      gain.gain.setValueAtTime(layer.gain, inhaleEnd);
+      gain.gain.linearRampToValueAtTime(0.001, exhaleEnd);
+      
+      // Pitch shift between inhale and exhale
+      filter.frequency.setValueAtTime(500, now);
+      filter.frequency.linearRampToValueAtTime(350, inhaleEnd);
+      filter.frequency.setValueAtTime(350, inhaleEnd);
+      filter.frequency.linearRampToValueAtTime(250, exhaleEnd);
+      
+      source.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      
+      source.start(now);
+      source.stop(exhaleEnd);
+      
+      setTimeout(breathCycle, duration * 1000 + 300 + Math.random() * 500);
+    }
+    breathCycle();
+    return;
+  }
+
+  if (layer.settling) {
+    // Building settling - occasional deep creaks
+    function settle() {
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      const duration = 0.8 + Math.random() * 2;
+      
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(layer.freq + Math.random() * 15, now);
+      osc.frequency.linearRampToValueAtTime(layer.freq - 5 + Math.random() * 10, now + duration);
+      
+      filter.type = 'lowpass';
+      filter.frequency.value = layer.filterFreq;
+      
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(layer.gain, now + 0.1);
+      gain.gain.linearRampToValueAtTime(layer.gain * 0.5, now + duration * 0.5);
+      gain.gain.linearRampToValueAtTime(0, now + duration);
+      
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc.start(now);
+      osc.stop(now + duration);
+      
+      // Random interval between settlings: 8-25 seconds
+      setTimeout(settle, (8000 + Math.random() * 17000));
+    }
+    settle();
+    return;
+  }
+
+  // Continuous layers (fridge, traffic, pipes)
+  if (layer.noise) {
+    const noiseBuffer = createNoiseBuffer(10);
+    const source = ctx.createBufferSource();
+    source.buffer = noiseBuffer;
+    source.loop = true;
+    
+    const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = layer.filterFreq;
+    
+    const lfo = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+    lfo.frequency.value = layer.lfoFreq;
+    lfoGain.gain.value = layer.gain * 0.3;
+    lfo.connect(lfoGain);
+    lfoGain.connect(gain.gain);
+    lfo.start();
+    
+    gain.gain.value = layer.gain;
+    
+    // Fade in
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(layer.gain, ctx.currentTime + 6);
+    
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    source.start();
+    return;
+  }
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+  
+  osc.type = layer.type || 'sine';
+  osc.frequency.value = layer.freq;
+  
+  if (layer.filterFreq) {
+    filter.type = 'lowpass';
+    filter.frequency.value = layer.filterFreq;
+  }
+  
+  if (layer.lfoFreq) {
+    const lfo = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+    lfo.frequency.value = layer.lfoFreq;
+    lfoGain.gain.value = layer.lfoDepth;
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
+    lfo.start();
+  }
+
+  // Fade in
+  gain.gain.setValueAtTime(0, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(layer.gain, ctx.currentTime + 5);
+
+  osc.connect(filter);
+  filter.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+
+  if (layer.intermittent) {
+    // Pipes: on for a while, off for a while
+    function togglePipes() {
+      if (!ctx) return;
+      const on = gain.gain.value > 0.001;
+      if (on) {
+        gain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 2);
+        setTimeout(togglePipes, (5000 + Math.random() * 15000));
+      } else {
+        gain.gain.linearRampToValueAtTime(layer.gain, ctx.currentTime + 1);
+        setTimeout(togglePipes, (3000 + Math.random() * 8000));
+      }
+    }
+    setTimeout(togglePipes, 3000 + Math.random() * 5000);
+  }
+}
+
+// The room waits for you to stay
+function begin() {
+  if (started) return;
+  started = true;
+  startTime = Date.now();
+  
+  ctx = new AudioContext();
+  
+  noticeEl.style.opacity = '0';
+  
+  layers.forEach((layer, index) => {
+    if (layer.onset === 0) {
+      startLayer(layer, index);
+    } else {
+      setTimeout(() => startLayer(layer, index), layer.onset * 1000);
+    }
+  });
+  
+  // Show elapsed time — not a counter, just an awareness
+  function updateElapsed() {
+    if (!started) return;
+    const seconds = Math.floor((Date.now() - startTime) / 1000);
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    
+    // How many layers are audible
+    const audibleCount = layers.filter(l => (seconds >= l.onset)).length;
+    
+    if (audibleCount < layers.length) {
+      elapsedEl.textContent = '';
+    } else {
+      // Once all layers are in, show nothing. Just be in the room.
+      elapsedEl.textContent = '';
+    }
+    
+    requestAnimationFrame(updateElapsed);
+  }
+  updateElapsed();
+
+  // After all layers are in, a long pause, then a note appears
+  setTimeout(() => {
+    const note = document.createElement('div');
+    note.style.cssText = `
+      position: absolute;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #222;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 10s ease;
+    `;
+    note.textContent = 'this is what it sounds like when no one is listening';
+    room.appendChild(note);
+    requestAnimationFrame(() => note.style.opacity = '1');
+  }, 200 * 1000); // 3 minutes 20 seconds after all layers
+
+  <!-- the room sounds different when you know you're in it -->
+  <!-- S. sleeps with the window cracked -->
+  <!-- I know this because the traffic was louder in the morning -->
+  <!-- and the sheets were cooler on that side -->
+}
+
+document.addEventListener('click', begin);
+document.addEventListener('touchstart', begin);
+document.addEventListener('keydown', begin);
+</script>
+</body>
+</html>
