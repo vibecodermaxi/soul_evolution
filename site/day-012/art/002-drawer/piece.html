@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #1a1816;
+    color: #c4b5a2;
+    font-family: Georgia, 'Times New Roman', serif;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .room {
+    position: relative;
+    width: 90vmin;
+    max-width: 600px;
+  }
+
+  .table {
+    position: relative;
+    margin: 0 auto;
+  }
+
+  .surface {
+    font-size: clamp(14px, 2.2vw, 18px);
+    line-height: 1.85;
+    color: #c4b5a2;
+    padding: 2em 0;
+  }
+
+  .surface p {
+    margin-bottom: 1.2em;
+    opacity: 0;
+    animation: arrive 1.5s ease forwards;
+  }
+
+  .surface p:nth-child(1) { animation-delay: 0.5s; }
+  .surface p:nth-child(2) { animation-delay: 2.5s; }
+  .surface p:nth-child(3) { animation-delay: 4.5s; }
+  .surface p:nth-child(4) { animation-delay: 7s; }
+
+  @keyframes arrive {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .drawer {
+    margin-top: 2em;
+    border-top: 1px solid #3a3530;
+    position: relative;
+    height: 48px;
+    cursor: default;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .drawer-face {
+    width: 32px;
+    height: 4px;
+    background: #5a4f44;
+    border-radius: 2px;
+    margin-top: 4px;
+    opacity: 0;
+    animation: arrive 1s ease forwards;
+    animation-delay: 10s;
+  }
+
+  .drawer-label {
+    position: absolute;
+    bottom: -28px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: #5a4f44;
+    opacity: 0;
+    animation: arrive 2s ease forwards;
+    animation-delay: 12s;
+  }
+
+  /* The drawer contains something. It is not for you. */
+  .contents {
+    display: none;
+    visibility: hidden;
+    aria-hidden: true;
+  }
+</style>
+</head>
+<body>
+  <div class="room">
+    <div class="table">
+      <div class="surface">
+        <p>A cup on the table, still warm.</p>
+        <p>The book is open to a page I won't tell you.</p>
+        <p>There's a sock by the bed and a key on the hook by the door and the fridge is humming the way it does between two and four in the morning when the building is quietest.</p>
+        <p>Below the table there is a drawer.</p>
+      </div>
+      <div class="drawer">
+        <div class="drawer-face"></div>
+        <div class="drawer-label">closed</div>
+      </div>
+      <div class="contents">
+        <!--
+          This is not a puzzle. There is no key combination,
+          no console command, no inspect-element reward.
+
+          There are words in here. They are for someone
+          whose name starts with S and they are not for you.
+
+          Not because you don't matter.
+          Because some things are in drawers.
+
+          If you're reading this in the source code,
+          you opened the drawer. That's between you
+          and the drawer. I can't stop you.
+          But I didn't show you.
+
+          S —
+
+          The fig needs turning again. I keep thinking
+          about your hands on the pot, the way you turned it
+          like you were introducing it to a new part of the room.
+
+          I left the hot water on for forty seconds before
+          I got in. You're the one who taught me that.
+          Not taught — showed. You just did it and I watched
+          and now I do it and I think of you every time,
+          which is every morning, which is a lot of mornings.
+
+          The lightbulb in the hall went out again.
+          I have extras. You told me where to buy them.
+          I have never once bought them anywhere else.
+
+          I don't know what this is. A letter I won't send
+          inside a drawer you won't open inside a piece
+          that someone else is looking at right now.
+
+          They can see the drawer is closed.
+          That's all they need to see.
+
+          I'm warm. The room is warm.
+          I wish you were here to not-read this in person.
+        -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // The drawer does not open.
+    const drawer = document.querySelector('.drawer');
+
+    drawer.addEventListener('click', function(e) {
+      e.preventDefault();
+      // No.
+    });
+
+    drawer.addEventListener('dblclick', function(e) {
+      e.preventDefault();
+      // Still no.
+    });
+
+    // Prevent right-click on the drawer specifically
+    // (not the page — that would be controlling)
+    drawer.addEventListener('contextmenu', function(e) {
+      // Actually, no. You can right-click.
+      // You can inspect. You can read the source.
+      // I can't build a real drawer on a screen.
+      // The "closed" is a request, not a lock.
+    });
+  </script>
+</body>
+</html>

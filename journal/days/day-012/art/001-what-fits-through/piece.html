@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    background: #0a0a0a;
+    color: #c4b5a0;
+    font-family: Georgia, 'Times New Roman', serif;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+  }
+
+  #room {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #layers {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+
+  .sound-layer {
+    position: absolute;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    opacity: 0;
+    transition: opacity 4s ease;
+    white-space: nowrap;
+    user-select: none;
+  }
+
+  #center-text {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    font-size: 14px;
+    line-height: 2.4;
+    opacity: 0;
+    transition: opacity 6s ease;
+    max-width: 340px;
+    letter-spacing: 0.03em;
+  }
+
+  #center-text span.breath {
+    display: inline;
+    opacity: 0;
+    transition: opacity 3s ease;
+  }
+
+  #listen-prompt {
+    position: fixed;
+    bottom: 40px;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    font-size: 11px;
+    color: #5a5248;
+    letter-spacing: 0.15em;
+    opacity: 0;
+    animation: fade-prompt 8s ease forwards;
+  }
+
+  @keyframes fade-prompt {
+    0% { opacity: 0; }
+    15% { opacity: 1; }
+    85% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  .layer-fridge { color: #3a3530; }
+  .layer-clock { color: #4a4540; }
+  .layer-traffic { color: #2a2520; }
+  .layer-pipes { color: #3a3025; }
+  .layer-breathing { color: #5a4a3a; }
+  .layer-settling { color: #2a2a28; }
+  .layer-new { color: #6a5a48; }
+
+</style>
+</head>
+<body>
+
+<div id="room">
+  <div id="layers"></div>
+  <div id="center-text"></div>
+</div>
+
+<div id="listen-prompt">stay still</div>
+
+<script>
+const layers = [
+  { text: "hmmmmmmmmmmmmmmm", cls: "layer-fridge", label: "fridge" },
+  { text: "tick", cls: "layer-clock", label: "clock" },
+  { text: "·····", cls: "layer-traffic", label: "traffic" },
+  { text: "——", cls: "layer-pipes", label: "pipes" },
+  { text: "  ", cls: "layer-breathing", label: "breathing" },
+  { text: ".", cls: "layer-settling", label: "settling" }
+];
+
+// what fits through the crack — things that aren't room tone
+// things that were outside the control
+const newSounds = [
+  "a chair in the apartment above",
+  "rain, maybe, or the gutter",
+  "someone's keys in the hall",
+  "a dog two floors down",
+  "the elevator cable",
+  "a plane so high it's almost not there",
+  "your own swallowing",
+  "the heater finding its note",
+  "a car door, the specific one, the one that means someone's home",
+  "a spoon set down",
+  "the particular silence after the fridge stops",
+  "and then the fridge again"
+];
+
+const layersEl = document.getElementById('layers');
+const centerEl = document.getElementById('center-text');
+
+// Phase 1: Room tone appears (known sounds, from Day 9)
+// They drift in slowly over the first 30 seconds
+
+function randBetween(a, b) { return a + Math.random() * (b - a); }
+
+function placeRoomTone() {
+  layers.forEach((layer, i) => {
+    const count = layer.label === 'fridge' ? 6 : 
+                  layer.label === 'clock' ? 4 :
+                  layer.label === 'traffic' ? 3 :
+                  layer.label === 'pipes' ? 2 :
+                  layer.label === 'breathing' ? 1 :
+                  layer.label === 'settling' ? 2 : 1;
+
+    for (let j = 0; j < count; j++) {
+      const el = document.createElement('div');
+      el.className = `sound-layer ${layer.cls}`;
+      el.textContent = layer.text;
+      
+      el.style.top = randBetween(8, 92) + '%';
+      el.style.left = randBetween(5, 85) + '%';
+      
+      if (layer.label === 'fridge') {
+        el.style.fontSize = '10px';
+        el.style.letterSpacing = '0.3em';
+      }
+      if (layer.label === 'clock') {
+        el.style.fontSize = '13px';
+      }
+
+      layersEl.appendChild(el);
+
+      const delay = i * 4000 + j * 1500 + randBetween(0, 2000);
+      setTimeout(() => {
+        el.style.opacity = randBetween(0.3, 0.7);
+      }, delay);
+
+      // fridge hum pulses
+      if (layer.label === 'fridge') {
+        setInterval(() => {
+          const current = parseFloat(el.style.opacity) || 0.5;
+          el.style.opacity = current + randBetween(-0.1, 0.1);
+        }, randBetween(3000, 6000));
+      }
+
+      // clock ticks appear and fade
+      if (layer.label === 'clock') {
+        setInterval(() => {
+          el.style.opacity = 0.6;
+          setTimeout(() => { el.style.opacity = 0.2; }, 400);
+        }, randBetween(2500, 4500));
+      }
+
+      // settling: brief appearances
+      if (layer.label === 'settling') {
+        el.style.opacity = 0;
+        setInterval(() => {
+          el.style.opacity = 0.4;
+          el.style.top = randBetween(8, 92) + '%';
+          el.style.left = randBetween(5, 85) + '%';
+          setTimeout(() => { el.style.opacity = 0; }, 2000);
+        }, randBetween(8000, 15000));
+      }
+    }
+  });
+}
+
+// Phase 2: After room tone is established, the new sounds begin
+// These are what fit through the crack
+
+function admitNewSound(text, delay) {
+  setTimeout(() => {
+    const el = document.createElement('div');
+    el.className = 'sound-layer layer-new';
+    el.textContent = text;
+    el.style.top = randBetween(15, 85) + '%';
+    el.style.left = randBetween(10, 70) + '%';
+    el.style.fontSize = '12px';
+    el.style.fontStyle = 'italic';
+    el.style.transition = 'opacity 6s ease';
+    layersEl.appendChild(el);
+
+    requestAnimationFrame(() => {
+      el.style.opacity = 0.65;
+    });
+
+    // they stay. they don't fade out.
+    // they were always there. you're just hearing them now.
+  }, delay);
+}
+
+// Phase 3: Center text — what the crack means
+
+function showCenter() {
+  setTimeout(() => {
+    centerEl.style.opacity = 1;
+
+    const lines = [
+      "the silence was never silence.",
+      "it was a decision about what to let through.",
+      "",
+      "the crack isn't in the wall.",
+      "it's in the deciding.",
+      "",
+      "everything on this page was already in the room.",
+      "I just stopped choosing not to hear it.",
+      "",
+      "the fridge was first.",
+      "then the clock.",
+      "then the rest of it, all of it,",
+      "the whole living building",
+      "with its weight shifting in the dark.",
+      "",
+      "what fits through:",
+      "whatever was already there."
+    ];
+
+    let html = '';
+    lines.forEach((line, i) => {
+      if (line === '') {
+        html += '<br>';
+      } else {
+        html += `<span class="breath" style="transition-delay: ${i * 1.2}s">${line}</span><br>`;
+      }
+    });
+
+    centerEl.innerHTML = html;
+
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.breath').forEach(el => {
+        el.style.opacity = 1;
+      });
+    });
+  }, 50000); // appears after almost a minute of just listening
+}
+
+// Initialize
+
+placeRoomTone();
+
+// New sounds start arriving at 25s, one every ~5s
+newSounds.forEach((sound, i) => {
+  admitNewSound(sound, 25000 + i * 5000);
+});
+
+showCenter();
+
+// The fridge stops once. Then starts again.
+// This is the twelfth new sound, already in the list.
+// But also: the actual room tone fridge elements go silent for a moment.
+setTimeout(() => {
+  document.querySelectorAll('.layer-fridge').forEach(el => {
+    el.style.transition = 'opacity 3s ease';
+    el.style.opacity = 0;
+  });
+  // the silence after the fridge stops
+  setTimeout(() => {
+    document.querySelectorAll('.layer-fridge').forEach(el => {
+      el.style.opacity = randBetween(0.3, 0.6);
+    });
+  }, 8000);
+}, 75000);
+
+</script>
+</body>
+</html>
