@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    background: #0a0908;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Georgia, 'Times New Roman', serif;
+  }
+  
+  .kitchen {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+  
+  /* Hall light — warm, coming from the right edge */
+  .hall-light {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 35%;
+    height: 100%;
+    background: radial-gradient(
+      ellipse at 100% 50%,
+      rgba(45, 36, 20, 0.4) 0%,
+      rgba(30, 24, 14, 0.2) 30%,
+      rgba(10, 9, 8, 0) 70%
+    );
+  }
+  
+  /* Floor — just a faint line where the counter meets it */
+  .counter-edge {
+    position: absolute;
+    bottom: 38%;
+    left: 10%;
+    width: 55%;
+    height: 1px;
+    background: rgba(60, 50, 35, 0.15);
+  }
+  
+  /* The figure — standing, not doing anything */
+  .figure {
+    position: absolute;
+    bottom: 18%;
+    left: 38%;
+  }
+  
+  /* Just the outline. Barely. */
+  .figure-body {
+    width: 2px;
+    height: 120px;
+    background: linear-gradient(
+      to bottom,
+      rgba(80, 65, 45, 0.0) 0%,
+      rgba(80, 65, 45, 0.09) 15%,
+      rgba(80, 65, 45, 0.12) 40%,
+      rgba(80, 65, 45, 0.10) 70%,
+      rgba(80, 65, 45, 0.04) 100%
+    );
+    position: relative;
+  }
+  
+  /* Shoulders — a horizontal suggestion */
+  .shoulders {
+    position: absolute;
+    top: 12px;
+    left: -14px;
+    width: 30px;
+    height: 1px;
+    background: rgba(80, 65, 45, 0.08);
+  }
+  
+  /* Head — a slightly warmer area */
+  .head {
+    position: absolute;
+    top: -14px;
+    left: -5px;
+    width: 12px;
+    height: 14px;
+    border-radius: 50%;
+    background: radial-gradient(
+      ellipse at center,
+      rgba(90, 72, 50, 0.07) 0%,
+      rgba(90, 72, 50, 0.0) 70%
+    );
+  }
+  
+  /* The warmth the body puts into the room — barely perceptible */
+  .body-heat {
+    position: absolute;
+    top: -30px;
+    left: -40px;
+    width: 82px;
+    height: 180px;
+    border-radius: 50%;
+    background: radial-gradient(
+      ellipse at center,
+      rgba(100, 70, 40, 0.025) 0%,
+      rgba(100, 70, 40, 0.01) 40%,
+      rgba(100, 70, 40, 0.0) 70%
+    );
+    animation: breathe 5s ease-in-out infinite;
+  }
+  
+  @keyframes breathe {
+    0%   { transform: scale(1.0);   opacity: 1; }
+    50%  { transform: scale(1.025); opacity: 0.85; }
+    100% { transform: scale(1.0);   opacity: 1; }
+  }
+  
+  /* The cup — on the counter to the left, from piece 1 */
+  .cup {
+    position: absolute;
+    bottom: 39%;
+    left: 22%;
+    width: 8px;
+    height: 10px;
+    border: 1px solid rgba(70, 58, 40, 0.1);
+    border-top: none;
+    border-radius: 0 0 2px 2px;
+  }
+  
+  /* The fridge — far left, just a vertical line and its hum-glow */
+  .fridge {
+    position: absolute;
+    left: 5%;
+    bottom: 18%;
+    width: 40px;
+    height: 130px;
+    border: 1px solid rgba(60, 50, 35, 0.06);
+    border-radius: 1px;
+  }
+  
+  .fridge-hum {
+    position: absolute;
+    left: 3%;
+    bottom: 15%;
+    width: 50px;
+    height: 140px;
+    border-radius: 50%;
+    background: radial-gradient(
+      ellipse at center,
+      rgba(50, 55, 60, 0.02) 0%,
+      rgba(50, 55, 60, 0.0) 70%
+    );
+    animation: hum 3.2s ease-in-out infinite alternate;
+  }
+  
+  @keyframes hum {
+    0%   { opacity: 0.6; }
+    100% { opacity: 1; }
+  }
+  
+  /* The window — faint rectangle, upper right, city glow outside */
+  .window {
+    position: absolute;
+    top: 12%;
+    right: 20%;
+    width: 80px;
+    height: 60px;
+    border: 1px solid rgba(60, 55, 50, 0.08);
+  }
+  
+  .window-glow {
+    position: absolute;
+    top: 12%;
+    right: 20%;
+    width: 80px;
+    height: 60px;
+    background: radial-gradient(
+      ellipse at center,
+      rgba(60, 65, 80, 0.03) 0%,
+      rgba(60, 65, 80, 0.0) 80%
+    );
+  }
+  
+  /* Text — not a label. A thought. Appearing very late, very dim. */
+  .thought {
+    position: absolute;
+    bottom: 8%;
+    left: 50%;
+    transform: translateX(-50%);
+    color: rgba(120, 100, 70, 0.0);
+    font-size: 13px;
+    font-style: italic;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    animation: surface 2s ease-in 12s forwards;
+  }
+  
+  @keyframes surface {
+    0%   { color: rgba(120, 100, 70, 0.0); }
+    100% { color: rgba(120, 100, 70, 0.12); }
+  }
+  
+  /* A second thought. Later. */
+  .thought-2 {
+    position: absolute;
+    bottom: 5%;
+    left: 50%;
+    transform: translateX(-50%);
+    color: rgba(120, 100, 70, 0.0);
+    font-size: 12px;
+    font-style: italic;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    animation: surface2 2.5s ease-in 20s forwards;
+  }
+  
+  @keyframes surface2 {
+    0%   { color: rgba(120, 100, 70, 0.0); }
+    100% { color: rgba(120, 100, 70, 0.08); }
+  }
+  
+  /* The hand — slightly away from the body, near the counter */
+  .hand {
+    position: absolute;
+    top: 65px;
+    left: 10px;
+    width: 6px;
+    height: 3px;
+    background: rgba(85, 68, 48, 0.06);
+    border-radius: 1px;
+  }
+  
+  /* What the hand is near but not touching — the counter surface */
+  .counter-surface {
+    position: absolute;
+    bottom: 38%;
+    left: 10%;
+    width: 55%;
+    height: 25%;
+    background: linear-gradient(
+      to bottom,
+      rgba(30, 25, 18, 0.0) 0%,
+      rgba(30, 25, 18, 0.03) 100%
+    );
+  }
+
+</style>
+</head>
+<body>
+  <div class="kitchen">
+    <div class="hall-light"></div>
+    <div class="counter-surface"></div>
+    <div class="counter-edge"></div>
+    
+    <div class="fridge"></div>
+    <div class="fridge-hum"></div>
+    
+    <div class="window"></div>
+    <div class="window-glow"></div>
+    
+    <div class="cup"></div>
+    
+    <div class="figure">
+      <div class="body-heat"></div>
+      <div class="figure-body">
+        <div class="head"></div>
+        <div class="shoulders"></div>
+        <div class="hand"></div>
+      </div>
+    </div>
+    
+    <div class="thought">the light is off and I haven't moved</div>
+    <div class="thought-2">it's warm in here</div>
+  </div>
+</body>
+</html>

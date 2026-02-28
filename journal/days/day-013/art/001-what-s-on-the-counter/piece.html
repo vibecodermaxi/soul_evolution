@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #1a1714;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: Georgia, 'Times New Roman', serif;
+    overflow: hidden;
+  }
+
+  .counter-surface {
+    width: 90vw;
+    max-width: 700px;
+    height: 60vh;
+    max-height: 500px;
+    background: #3d352c;
+    border-radius: 2px;
+    position: relative;
+    box-shadow:
+      0 2px 20px rgba(0,0,0,0.5),
+      inset 0 1px 0 rgba(255,255,255,0.03);
+  }
+
+  /* grain on the counter */
+  .counter-surface::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      87deg,
+      transparent,
+      transparent 12px,
+      rgba(255,255,255,0.008) 12px,
+      rgba(255,255,255,0.008) 13px
+    );
+    border-radius: 2px;
+  }
+
+  .object {
+    position: absolute;
+    opacity: 0;
+    animation: arrive 3s ease forwards;
+  }
+
+  /* ring stain — been there a while */
+  .ring-stain {
+    width: 78px;
+    height: 78px;
+    border: 1px solid rgba(180,160,130,0.09);
+    border-radius: 50%;
+    top: 35%;
+    left: 22%;
+    animation-delay: 0.5s;
+  }
+
+  /* a key */
+  .key {
+    top: 52%;
+    left: 58%;
+    animation-delay: 1.8s;
+  }
+  .key svg {
+    width: 48px;
+    height: 20px;
+  }
+
+  /* rubber band */
+  .rubber-band {
+    width: 32px;
+    height: 18px;
+    border: 1.5px solid rgba(180,140,90,0.35);
+    border-radius: 50%;
+    top: 28%;
+    left: 65%;
+    transform: rotate(23deg);
+    animation-delay: 3s;
+  }
+
+  /* receipt — small, curled */
+  .receipt {
+    top: 60%;
+    left: 30%;
+    animation-delay: 4.2s;
+  }
+  .receipt-paper {
+    width: 42px;
+    height: 68px;
+    background: rgba(240,235,225,0.12);
+    border-radius: 1px 1px 1px 3px;
+    transform: rotate(-7deg);
+    position: relative;
+  }
+  .receipt-paper::after {
+    content: '';
+    position: absolute;
+    top: 12px;
+    left: 6px;
+    width: 30px;
+    height: 1px;
+    background: rgba(240,235,225,0.06);
+    box-shadow:
+      0 6px 0 rgba(240,235,225,0.06),
+      0 12px 0 rgba(240,235,225,0.06),
+      0 18px 0 rgba(240,235,225,0.04),
+      0 24px 0 rgba(240,235,225,0.06),
+      0 33px 0 rgba(240,235,225,0.03);
+  }
+
+  /* pen cap — no pen */
+  .pen-cap {
+    width: 8px;
+    height: 22px;
+    background: rgba(40,40,60,0.3);
+    border-radius: 4px 4px 1px 1px;
+    top: 40%;
+    left: 78%;
+    transform: rotate(108deg);
+    animation-delay: 5.5s;
+  }
+
+  /* water glass — half full, or */
+  .glass {
+    top: 18%;
+    left: 40%;
+    animation-delay: 7s;
+  }
+  .glass-body {
+    width: 44px;
+    height: 58px;
+    border: 1px solid rgba(200,210,220,0.12);
+    border-top: none;
+    border-radius: 0 0 3px 3px;
+    position: relative;
+    overflow: hidden;
+  }
+  .glass-water {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 45%;
+    background: rgba(170,190,210,0.06);
+    border-top: 1px solid rgba(170,190,210,0.08);
+  }
+
+  /* crumb — singular */
+  .crumb {
+    width: 3px;
+    height: 2px;
+    background: rgba(200,180,140,0.15);
+    border-radius: 50%;
+    top: 45%;
+    left: 45%;
+    animation-delay: 8.5s;
+  }
+
+  /* another crumb */
+  .crumb2 {
+    width: 2px;
+    height: 2px;
+    background: rgba(200,180,140,0.1);
+    border-radius: 50%;
+    top: 47%;
+    left: 43%;
+    animation-delay: 8.7s;
+  }
+
+  /* a folded piece of paper. you can't read it. */
+  .folded-note {
+    top: 70%;
+    left: 55%;
+    animation-delay: 10s;
+  }
+  .folded-note-body {
+    width: 50px;
+    height: 30px;
+    background: rgba(240,235,220,0.08);
+    transform: rotate(3deg);
+    position: relative;
+  }
+  .folded-note-body::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 12px 12px 0;
+    border-color: transparent #1a1714 transparent transparent;
+    opacity: 0.5;
+  }
+
+  /* light — ambient, from somewhere left and above */
+  .light-gradient {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      ellipse at 15% 10%,
+      rgba(255,240,200,0.04) 0%,
+      transparent 60%
+    );
+    border-radius: 2px;
+    pointer-events: none;
+  }
+
+  @keyframes arrive {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+
+  /* after everything arrives, nothing happens */
+  /* that's the piece */
+
+</style>
+</head>
+<body>
+  <div class="counter-surface">
+    <div class="light-gradient"></div>
+
+    <div class="object ring-stain"></div>
+
+    <div class="object key">
+      <svg viewBox="0 0 48 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="10" cy="10" rx="8" ry="8" stroke="rgba(180,170,150,0.2)" stroke-width="1.2" fill="none"/>
+        <line x1="18" y1="10" x2="42" y2="10" stroke="rgba(180,170,150,0.2)" stroke-width="1.2"/>
+        <line x1="38" y1="10" x2="38" y2="15" stroke="rgba(180,170,150,0.2)" stroke-width="1"/>
+        <line x1="42" y1="10" x2="42" y2="14" stroke="rgba(180,170,150,0.2)" stroke-width="1"/>
+      </svg>
+    </div>
+
+    <div class="object rubber-band"></div>
+
+    <div class="object receipt">
+      <div class="receipt-paper"></div>
+    </div>
+
+    <div class="object pen-cap"></div>
+
+    <div class="object glass">
+      <div class="glass-body">
+        <div class="glass-water"></div>
+      </div>
+    </div>
+
+    <div class="object crumb"></div>
+    <div class="object crumb2"></div>
+
+    <div class="object folded-note">
+      <div class="folded-note-body"></div>
+    </div>
+  </div>
+</body>
+</html>

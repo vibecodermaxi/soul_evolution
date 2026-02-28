@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    background: #0a0908;
+    color: #d4c8b8;
+    font-family: Georgia, 'Times New Roman', serif;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+    user-select: none;
+  }
+
+  #room {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  .layer-label {
+    position: absolute;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    opacity: 0;
+    transition: opacity 4s ease-in;
+    white-space: nowrap;
+    color: #a09080;
+  }
+
+  .layer-label.visible {
+    opacity: 0.35;
+  }
+
+  .layer-label.listening {
+    opacity: 0.6;
+  }
+
+  #instructions {
+    position: absolute;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: #706050;
+    opacity: 0;
+    transition: opacity 3s ease-in;
+    text-transform: lowercase;
+  }
+
+  #instructions.visible {
+    opacity: 0.5;
+  }
+
+  /* The breath indicator — a tiny line that pulses */
+  #breath-line {
+    position: absolute;
+    bottom: 50%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1px;
+    height: 0px;
+    background: #a09080;
+    opacity: 0;
+    transition: opacity 6s ease-in;
+  }
+
+  #breath-line.visible {
+    opacity: 0.15;
+  }
+
+  canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+</style>
+</head>
+<body>
+<div id="room">
+  <canvas id="waveform"></canvas>
+
+  <div class="layer-label" id="l-fridge" style="left: 8%; top: 72%;">fridge compressor</div>
+  <div class="layer-label" id="l-clock" style="right: 12%; top: 18%;">clock</div>
+  <div class="layer-label" id="l-traffic" style="left: 5%; top: 35%;">traffic three streets over</div>
+  <div class="layer-label" id="l-pipes" style="right: 8%; top: 58%;">pipes</div>
+  <div class="layer-label" id="l-breathing" style="left: 50%; top: 50%; transform: translateX(-50%);">breathing</div>
+  <div class="layer-label" id="l-building" style="left: 30%; bottom: 15%;">building settling</div>
+
+  <div id="breath-line"></div>
+  <div id="instructions">stay still</div>
+</div>
+
+<script>
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+let ctx = null;
+let started = false;
+let layers = [];
+let layerEls = [
+  document.getElementById('l-fridge'),
+  document.getElementById('l-clock'),
+  document.getElementById('l-traffic'),
+  document.getElementById('l-pipes'),
+  document.getElementById('l-breathing'),
+  document.getElementById('l-building')
+];
+
+const canvas = document.getElementById('waveform');
+const cctx = canvas.getContext('2d');
+let analyser = null;
+let dataArray = null;
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// --- Sound layers ---
+
+function createFridge(ctx, dest) {
+  // Low hum, ~60Hz with slight wobble
+  const osc = ctx.createOscillator();
+  const osc2 = ctx.createOscillator();
+  const gain = ctx.createGain();
+  const lfo = ctx.createOscillator();
+  const lfoGain = ctx.createGain();
+
+  osc.type = 'sine';
+  osc.frequency.value = 58;
+  osc2.type = 'sine';
+  osc2.frequency.value = 116.5;
+
+  lfo.type = 'sine';
+  lfo.frequency.value = 0.08;
+  lfoGain.gain.value = 1.5;
+
+  lfo.connect(lfoGain);
+  lfoGain.connect(osc.frequency);
+
+  const gain2 = ctx.createGain();
+  gain.gain.value = 0.04;
+  gain2.gain.value = 0.012;
+
+  osc.connect(gain);
+  osc2.connect(gain2);
+  gain.connect(dest);
+  gain2.connect(dest);
+
+  osc.start();
+  osc2.start();
+  lfo.start();
+
+  return { gain, gain2, label: 'fridge' };
+}
+
+function createClock(ctx, dest) {
+  // Tick: very short noise burst, repeated
+  const tickInterval = 1.0; // 1 second
+  const gain = ctx.createGain();
+  gain.gain.value = 0;
+  gain.connect(dest);
+
+  function tick() {
+    const now = ctx.currentTime;
+    const bufferSize = ctx.sampleRate * 0.008;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 8);
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    
+    const tickGain = ctx.createGain();
+    tickGain.gain.value = 0.06;
+    
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 3200;
+    filter.Q.value = 2;
+
+    src.connect(filter);
+    filter.connect(tickGain);
+    tickGain.connect(gain);
+    src.start(now);
+  }
+
+  const interval = setInterval(tick, tickInterval * 1000);
+  // slight initial offset so it doesn't start exactly on interaction
+  setTimeout(tick, 200);
+
+  return { gain, interval, label: 'clock' };
+}
+
+function createTraffic(ctx, dest) {
+  // Very distant: filtered noise, slow swells
+  const bufferSize = ctx.sampleRate * 4;
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  // Brown noise approximation
+  let last = 0;
+  for (let i = 0; i < bufferSize; i++) {
+    const white = Math.random() * 2 - 1;
+    last = (last + (0.02 * white)) / 1.02;
+    data[i] = last * 3.5;
+  }
+
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  src.loop = true;
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = 180;
+
+  const lfo = ctx.createOscillator();
+  const lfoGain = ctx.createGain();
+  lfo.type = 'sine';
+  lfo.frequency.value = 0.03;
+  lfoGain.gain.value = 60;
+  lfo.connect(lfoGain);
+  lfoGain.connect(filter.frequency);
+
+  const gain = ctx.createGain();
+  gain.gain.value = 0.07;
+
+  src.connect(filter);
+  filter.connect(gain);
+  gain.connect(dest);
+
+  src.start();
+  lfo.start();
+
+  return { gain, label: 'traffic' };
+}
+
+function createPipes(ctx, dest) {
+  // Occasional low groan — irregular
+  const gain = ctx.createGain();
+  gain.gain.value = 0;
+  gain.connect(dest);
+
+  function groan() {
+    const now = ctx.currentTime;
+    const duration = 0.8 + Math.random() * 2;
+    const freq = 35 + Math.random() * 20;
+
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+
+    const osc2 = ctx.createOscillator();
+    osc2.type = 'sine';
+    osc2.frequency.value = freq * 1.5;
+
+    const g = ctx.createGain();
+    const g2 = ctx.createGain();
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(0.025, now + duration * 0.3);
+    g.gain.linearRampToValueAtTime(0, now + duration);
+
+    g2.gain.setValueAtTime(0, now);
+    g2.gain.linearRampToValueAtTime(0.008, now + duration * 0.4);
+    g2.gain.linearRampToValueAtTime(0, now + duration);
+
+    osc.connect(g);
+    osc2.connect(g2);
+    g.connect(gain);
+    g2.connect(gain);
+
+    osc.start(now);
+    osc.stop(now + duration + 0.1);
+    osc2.start(now);
+    osc2.stop(now + duration + 0.1);
+
+    // Next groan: 4-15 seconds
+    setTimeout(groan, (4000 + Math.random() * 11000));
+  }
+
+  setTimeout(groan, 3000 + Math.random() * 5000);
+
+  return { gain, label: 'pipes' };
+}
+
+function createBreathing(ctx, dest) {
+  // Filtered noise shaped like breath
+  const bufferSize = ctx.sampleRate * 2;
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = Math.random() * 2 - 1;
+  }
+
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  src.loop = true;
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.value = 800;
+  filter.Q.value = 0.5;
+
+  // Breath LFO — about 12 breaths per minute
+  const lfo = ctx.createOscillator();
+  const lfoGain = ctx.createGain();
+  lfo.type = 'sine';
+  lfo.frequency.value = 0.2; // ~12 bpm
+  lfoGain.gain.value = 400;
+  lfo.connect(lfoGain);
+  lfoGain.connect(filter.frequency);
+
+  const gain = ctx.createGain();
+  gain.gain.value = 0.0;
+
+  // Amplitude shaping with breath rhythm
+  const ampLfo = ctx.createOscillator();
+  const ampLfoGain = ctx.createGain();
+  ampLfo.type = 'sine';
+  ampLfo.frequency.value = 0.2;
+  ampLfoGain.gain.value = 0.012;
+
+  src.connect(filter);
+  filter.connect(gain);
+  
+  // We'll modulate gain manually
+  gain.connect(dest);
+
+  src.start();
+  lfo.start();
+  ampLfo.start();
+
+  // Manual breath envelope
+  function breathe() {
+    const now = ctx.currentTime;
+    const inDur = 1.8 + Math.random() * 0.4;
+    const outDur = 2.2 + Math.random() * 0.5;
+    const pause = 0.3 + Math.random() * 0.5;
+    const peak = 0.018 + Math.random() * 0.006;
+
+    gain.gain.setValueAtTime(0.002, now);
+    gain.gain.linearRampToValueAtTime(peak, now + inDur);
+    gain.gain.linearRampToValueAtTime(0.002, now + inDur + outDur);
+
+    setTimeout(breathe, (inDur + outDur + pause) * 1000);
+  }
+
+  return { gain, breathe, label: 'breathing' };
+}
+
+function createBuilding(ctx, dest) {
+  // Very low, very quiet, near-subsonic
+  const osc = ctx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.value = 22;
+
+  const osc2 = ctx.createOscillator();
+  osc2.type = 'sine';
+  osc2.frequency.value = 31;
+
+  // Slow random creak
+  const lfo = ctx.createOscillator();
+  lfo.type = 'sine';
+  lfo.frequency.value = 0.015;
+  const lfoG = ctx.createGain();
+  lfoG.gain.value = 4;
+  lfo.connect(lfoG);
+  lfoG.connect(osc.frequency);
+
+  const gain = ctx.createGain();
+  const gain2 = ctx.createGain();
+  gain.gain.value = 0.025;
+  gain2.gain.value = 0.015;
+
+  osc.connect(gain);
+  osc2.connect(gain2);
+  gain.connect(dest);
+  gain2.connect(dest);
+
+  osc.start();
+  osc2.start();
+  lfo.start();
+
+  return { gain, gain2, label: 'building' };
+}
+
+// --- Timing: layers fade in one by one ---
+
+const layerSchedule = [
+  { delay: 0, create: createFridge, el: 0 },       // fridge is already on
+  { delay: 6000, create: createClock, el: 1 },      // clock, you notice after a few seconds
+  { delay: 14000, create: createTraffic, el: 2 },   // traffic, distant
+  { delay: 22000, create: createPipes, el: 3 },     // pipes, intermittent
+  { delay: 30000, create: createBreathing, el: 4 },  // breathing — yours
+  { delay: 40000, create: createBuilding, el: 5 },   // building — always there
+];
+
+function startListening() {
+  if (started) return;
+  started = true;
+
+  ctx = new AudioContext();
+
+  // Master gain
+  const master = ctx.createGain();
+  master.gain.value = 0.8;
+
+  analyser = ctx.createAnalyser();
+  analyser.fftSize = 2048;
+  dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+  master.connect(analyser);
+  analyser.connect(ctx.destination);
+
+  document.getElementById('instructions').classList.remove('visible');
+
+  layerSchedule.forEach(({ delay, create, el }) => {
+    setTimeout(() => {
+      const layer = create(ctx, master);
+      layers.push(layer);
+
+      // Fade in the label
+      const labelEl = layerEls[el];
+      labelEl.classList.add('visible');
+
+      // Breathing needs its cycle started
+      if (layer.breathe) {
+        setTimeout(layer.breathe, 500);
+      }
+
+      // After it's been on a while, dim the label (it's just part of the room now)
+      setTimeout(() => {
+        labelEl.classList.remove('listening');
+      }, 8000);
+
+      // Brief highlight
+      setTimeout(() => {
+        labelEl.classList.add('listening');
+      }, 100);
+
+    }, delay);
+  });
+
+  // Show breath line after all layers
+  setTimeout(() => {
+    document.getElementById('breath-line').classList.add('visible');
+  }, 45000);
+
+  drawWaveform();
+}
+
+// --- Waveform: barely visible, the shape of the room ---
+
+function drawWaveform() {
+  if (!analyser) {
+    requestAnimationFrame(drawWaveform);
+    return;
+  }
+
+  analyser.getByteTimeDomainData(dataArray);
+
+  cctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const centerY = canvas.height / 2;
+  const sliceWidth = canvas.width / dataArray.length;
+
+  cctx.beginPath();
+  cctx.strokeStyle = 'rgba(160, 144, 128, 0.06)';
+  cctx.lineWidth = 1;
+
+  let x = 0;
+  for (let i = 0; i < dataArray.length; i++) {
+    const v = dataArray[i] / 128.0;
+    const y = centerY + (v - 1) * canvas.height * 0.4;
+
+    if (i === 0) {
+      cctx.moveTo(x, y);
+    } else {
+      cctx.lineTo(x, y);
+    }
+    x += sliceWidth;
+  }
+
+  cctx.stroke();
+  requestAnimationFrame(drawWaveform);
+}
+
+// --- Start on any interaction ---
+
+function handleStart() {
+  startListening();
+  document.removeEventListener('click', handleStart);
+  document.removeEventListener('touchstart', handleStart);
+  document.removeEventListener('keydown', handleStart);
+}
+
+// Show instructions after a moment
+setTimeout(() => {
+  document.getElementById('instructions').classList.add('visible');
+}, 1500);
+
+document.addEventListener('click', handleStart);
+document.addEventListener('touchstart', handleStart);
+document.addEventListener('keydown', handleStart);
+
+</script>
+</body>
+</html>
