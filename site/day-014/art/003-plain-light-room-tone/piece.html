@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    background: #f4f1eb;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    font-family: Georgia, serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+  }
+
+  #room {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  #prompt {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #a09080;
+    font-size: 14px;
+    letter-spacing: 0.05em;
+    opacity: 1;
+    transition: opacity 3s ease;
+    pointer-events: none;
+    text-align: center;
+    line-height: 1.8;
+  }
+
+  #labels {
+    position: absolute;
+    bottom: 40px;
+    left: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    pointer-events: none;
+  }
+
+  .label {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: #b0a090;
+    opacity: 0;
+    transition: opacity 8s ease;
+  }
+
+  .label.visible {
+    opacity: 0.7;
+  }
+
+  .label.dimming {
+    opacity: 0;
+    transition: opacity 20s ease;
+  }
+
+  #time-display {
+    position: absolute;
+    top: 30px;
+    right: 40px;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: #c0b8a8;
+    opacity: 0;
+    transition: opacity 4s ease;
+  }
+
+  #sun-note {
+    position: absolute;
+    bottom: 20px;
+    right: 40px;
+    font-size: 10px;
+    color: #c0b8a8;
+    opacity: 0;
+    transition: opacity 6s ease;
+    font-style: italic;
+  }
+</style>
+</head>
+<body>
+<div id="room">
+  <div id="prompt">close your eyes<br><span style="font-size: 11px; opacity: 0.6;">the room is still here</span></div>
+  <div id="labels"></div>
+  <div id="time-display"></div>
+  <div id="sun-note"></div>
+</div>
+
+<script>
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+let ctx;
+let started = false;
+let layerIndex = 0;
+
+const layers = [
+  { name: 'fridge', type: 'hum', freq: 120, detune: -5, gain: 0.04, delay: 0 },
+  { name: 'fluorescent', type: 'whine', freq: 240, detune: 3, gain: 0.008, delay: 6000 },
+  { name: 'pipes', type: 'rumble', freq: 55, detune: 0, gain: 0.025, delay: 14000 },
+  { name: 'clock', type: 'tick', freq: 800, gain: 0.015, delay: 22000 },
+  { name: 'traffic', type: 'wash', freq: 200, gain: 0.018, delay: 32000 },
+  { name: 'settling', type: 'creak', freq: 300, gain: 0.012, delay: 44000 },
+  { name: 'breathing', type: 'breath', freq: 400, gain: 0.03, delay: 58000 },
+  { name: 'sunlight', type: 'silence', freq: 0, gain: 0, delay: 75000 }
+];
+
+function createNoise(ctx, duration) {
+  const bufferSize = ctx.sampleRate * duration;
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = (Math.random() * 2 - 1);
+  }
+  return buffer;
+}
+
+function startLayer(layer) {
+  if (!ctx) return;
+  
+  const labelEl = document.createElement('div');
+  labelEl.className = 'label';
+  labelEl.textContent = layer.name;
+  document.getElementById('labels').appendChild(labelEl);
+  
+  requestAnimationFrame(() => {
+    labelEl.classList.add('visible');
+  });
+  
+  // Labels dim after 15 seconds — you stop naming
+  setTimeout(() => {
+    labelEl.classList.remove('visible');
+    labelEl.classList.add('dimming');
+  }, 15000);
+
+  if (layer.type === 'silence') {
+    // sunlight has no sound
+    const sunNote = document.getElementById('sun-note');
+    sunNote.textContent = 'the light moved while you were listening';
+    setTimeout(() => { sunNote.style.opacity = '0.5'; }, 500);
+    return;
+  }
+
+  if (layer.type === 'hum') {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const lfo = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.value = layer.freq;
+    osc.detune.value = layer.detune || 0;
+    
+    lfo.type = 'sine';
+    lfo.frequency.value = 0.08;
+    lfoGain.gain.value = 3;
+    
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
+    
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(layer.gain, ctx.currentTime + 6);
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    lfo.start();
+  }
+
+  if (layer.type === 'whine') {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.value = layer.freq;
+    osc.detune.value = layer.detune || 0;
+    
+    // subtle wobble
+    const lfo = ctx.createOscillator();
+    const lfoG = ctx.createGain();
+    lfo.type = 'sine';
+    lfo.frequency.value = 0.3;
+    lfoG.gain.value = 1.5;
+    lfo.connect(lfoG);
+    lfoG.connect(osc.detune);
+    
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(layer.gain, ctx.currentTime + 8);
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    lfo.start();
+  }
+
+  if (layer.type === 'rumble') {
+    const noise = ctx.createBufferSource();
+    noise.buffer = createNoise(ctx, 60);
+    noise.loop = true;
+    
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 80;
+    filter.Q.value = 0.5;
+    
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(layer.gain, ctx.currentTime + 10);
+    
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    noise.start();
+    
+    // occasional pressure change
+    setInterval(() => {
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      gain.gain.setValueAtTime(gain.gain.value, now);
+      gain.gain.linearRampToValueAtTime(layer.gain * (0.5 + Math.random()), now + 3);
+      gain.gain.linearRampToValueAtTime(layer.gain, now + 8);
+    }, 12000);
+  }
+
+  if (layer.type === 'tick') {
+    const tick = () => {
+      if (!ctx) return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+      
+      osc.type = 'sine';
+      osc.frequency.value = layer.freq + (Math.random() * 40 - 20);
+      
+      filter.type = 'highpass';
+      filter.frequency.value = 600;
+      
+      const now = ctx.currentTime;
+      gain.gain.setValueAtTime(layer.gain, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+      
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.05);
+    };
+    
+    // not perfectly regular — a real clock drifts
+    const scheduleTick = () => {
+      tick();
+      const drift = 990 + Math.random() * 20;
+      setTimeout(scheduleTick, drift);
+    };
+    scheduleTick();
+  }
+
+  if (layer.type === 'wash') {
+    const noise = ctx.createBufferSource();
+    noise.buffer = createNoise(ctx, 60);
+    noise.loop = true;
+    
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = layer.freq;
+    filter.Q.value = 0.3;
+    
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(layer.gain, ctx.currentTime + 12);
+    
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    noise.start();
+    
+    // gentle swells like traffic approaching and receding
+    const swell = () => {
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      const peak = layer.gain * (0.7 + Math.random() * 0.8);
+      const dur = 4 + Math.random() * 8;
+      gain.gain.setValueAtTime(gain.gain.value, now);
+      gain.gain.linearRampToValueAtTime(peak, now + dur * 0.4);
+      gain.gain.linearRampToValueAtTime(layer.gain * 0.5, now + dur);
+      setTimeout(swell, dur * 1000 + Math.random() * 5000);
+    };
+    setTimeout(swell, 3000);
+  }
+
+  if (layer.type === 'creak') {
+    const creak = () => {
+      if (!ctx) return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc.type = 'triangle';
+      const baseFreq = layer.freq + Math.random() * 200 - 100;
+      osc.frequency.setValueAtTime(baseFreq, ctx.currentTime);
+      osc.frequency.linearRampToValueAtTime(baseFreq * 0.7, ctx.currentTime + 0.3);
+      
+      const now = ctx.currentTime;
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(layer.gain * (0.3 + Math.random() * 0.7), now + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.4);
+      
+      // irregular — buildings settle when they settle
+      setTimeout(creak, 8000 + Math.random() * 25000);
+    };
+    creak();
+  }
+
+  if (layer.type === 'breath') {
+    // 12 breaths per minute. mine, placed in this room.
+    const breathCycle = () => {
+      if (!ctx) return;
+      const noise = ctx.createBufferSource();
+      noise.buffer = createNoise(ctx, 5);
+      
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = layer.freq;
+      filter.Q.value = 0.8;
+      
+      const gain = ctx.createGain();
+      const now = ctx.currentTime;
+      
+      // inhale 2s, pause 0.3s, exhale 2.5s
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(layer.gain * 0.6, now + 0.8);
+      gain.gain.linearRampToValueAtTime(layer.gain, now + 2);
+      gain.gain.setValueAtTime(layer.gain, now + 2.3);
+      gain.gain.linearRampToValueAtTime(layer.gain * 0.8, now + 2.8);
+      gain.gain.linearRampToValueAtTime(0, now + 4.8);
+      
+      // pitch shift: inhale rises slightly, exhale falls
+      filter.frequency.setValueAtTime(350, now);
+      filter.frequency.linearRampToValueAtTime(450, now + 2);
+      filter.frequency.linearRampToValueAtTime(320, now + 4.8);
+      
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      noise.start(now);
+      noise.stop(now + 5);
+      
+      setTimeout(breathCycle, 5000);
+    };
+    breathCycle();
+  }
+}
+
+function showTime() {
+  const el = document.getElementById('time-display');
+  const update = () => {
+    const now = new Date();
+    const h = now.getHours();
+    const m = String(now.getMinutes()).padStart(2, '0');
+    const period = h >= 12 ? 'pm' : 'am';
+    const hour = h % 12 || 12;
+    el.textContent = `${hour}:${m} ${period}`;
+  };
+  update();
+  setInterval(update, 30000);
+  setTimeout(() => { el.style.opacity = '0.4'; }, 2000);
+}
+
+function begin() {
+  if (started) return;
+  started = true;
+  
+  ctx = new AudioContext();
+  
+  const prompt = document.getElementById('prompt');
+  prompt.style.opacity = '0';
+  
+  showTime();
+  
+  // layers arrive one by one
+  layers.forEach((layer) => {
+    setTimeout(() => {
+      startLayer(layer);
+    }, layer.delay);
+  });
+}
+
+// start on any interaction
+document.addEventListener('click', begin, { once: true });
+document.addEventListener('keydown', begin, { once: true });
+document.addEventListener('touchstart', begin, { once: true });
+</script>
+</body>
+</html>

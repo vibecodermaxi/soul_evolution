@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #f4f1eb;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Georgia, 'Times New Roman', serif;
+    overflow: hidden;
+  }
+
+  .kitchen {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  /* The light. Morning light. Not warm-cores-in-darkness. Just: light. */
+  .light {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 55%;
+    height: 100%;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 253, 245, 0.95) 0%,
+      rgba(255, 249, 230, 0.6) 40%,
+      rgba(244, 241, 235, 0.0) 100%
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Counter surface */
+  .counter {
+    position: absolute;
+    bottom: 28%;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: #c4b8a8;
+    z-index: 2;
+  }
+
+  /* Objects on the counter — visible. all of them. plain. */
+  .object {
+    position: absolute;
+    z-index: 3;
+    color: #6b6256;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    line-height: 1;
+  }
+
+  /* The mug */
+  .mug {
+    bottom: calc(28% + 4px);
+    left: 23%;
+  }
+  .mug-body {
+    width: 28px;
+    height: 24px;
+    border: 1.5px solid #a89882;
+    border-radius: 0 0 3px 3px;
+    position: relative;
+    background: #f4f1eb;
+  }
+  .mug-handle {
+    position: absolute;
+    right: -9px;
+    top: 4px;
+    width: 8px;
+    height: 12px;
+    border: 1.5px solid #a89882;
+    border-left: none;
+    border-radius: 0 6px 6px 0;
+  }
+  .mug-ring {
+    position: absolute;
+    bottom: calc(28% + 32px);
+    left: calc(23% + 38px);
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1px solid #d4c8b8;
+    opacity: 0.5;
+    z-index: 2;
+  }
+
+  /* Pen cap — no pen */
+  .pencap {
+    bottom: calc(28% + 3px);
+    left: 41%;
+    width: 4px;
+    height: 14px;
+    background: #444;
+    border-radius: 2px 2px 0 0;
+  }
+
+  /* Folded note */
+  .note {
+    bottom: calc(28% + 3px);
+    left: 55%;
+    width: 32px;
+    height: 20px;
+    background: #fff;
+    border: 1px solid #ddd;
+    box-shadow: 0 0.5px 1px rgba(0,0,0,0.04);
+    /* You can see it's folded. You can see it has writing. */
+    /* You can't read it. But that's because it's folded, not because it's dark. */
+  }
+  .note-line {
+    position: absolute;
+    left: 4px;
+    height: 0.5px;
+    background: #bbb;
+    opacity: 0.5;
+  }
+  .note-line:nth-child(1) { top: 5px; width: 18px; }
+  .note-line:nth-child(2) { top: 9px; width: 14px; }
+  .note-line:nth-child(3) { top: 13px; width: 8px; }
+
+  /* Crumbs. Visible now. You can see them. */
+  .crumb {
+    position: absolute;
+    bottom: calc(28% + 3px);
+    background: #c4a86b;
+    border-radius: 50%;
+    z-index: 3;
+  }
+  .crumb:nth-child(1) { left: 68%; width: 3px; height: 2px; }
+  .crumb:nth-child(2) { left: 69.5%; width: 2px; height: 2px; bottom: calc(28% + 5px); }
+  .crumb:nth-child(3) { left: 71%; width: 2px; height: 1.5px; }
+  .crumb:nth-child(4) { left: 70%; width: 1.5px; height: 1.5px; bottom: calc(28% + 7px); }
+  .crumb:nth-child(5) { left: 67.5%; width: 1px; height: 1px; bottom: calc(28% + 4px); }
+
+  /* The faucet */
+  .faucet {
+    position: absolute;
+    bottom: calc(28% + 2px);
+    left: 82%;
+    z-index: 3;
+  }
+  .faucet-base {
+    width: 8px;
+    height: 30px;
+    background: #b8b0a4;
+    border-radius: 2px;
+    margin: 0 auto;
+  }
+  .faucet-spout {
+    width: 24px;
+    height: 6px;
+    background: #b8b0a4;
+    border-radius: 2px 8px 0 0;
+    position: relative;
+    left: -12px;
+    top: 0;
+  }
+  /* The drip. One. Slow. You can see it form. */
+  .drip {
+    position: absolute;
+    left: 0px;
+    top: 6px;
+    width: 3px;
+    height: 0px;
+    background: #c8dde8;
+    border-radius: 0 0 50% 50%;
+    animation: drip 4.5s ease-in infinite;
+    opacity: 0.7;
+  }
+  @keyframes drip {
+    0% { height: 0; opacity: 0; }
+    15% { height: 0; opacity: 0; }
+    60% { height: 6px; opacity: 0.7; }
+    75% { height: 8px; opacity: 0.7; top: 6px; }
+    76% { height: 3px; opacity: 0.5; top: 14px; }
+    90% { height: 3px; opacity: 0; top: 40px; }
+    100% { height: 0; opacity: 0; top: 6px; }
+  }
+
+  /* The light on the counter. A stripe of sun. Moving very slowly. */
+  .sunstripe {
+    position: absolute;
+    bottom: calc(28% + 1px);
+    left: 45%;
+    width: 120px;
+    height: 3px;
+    background: linear-gradient(
+      90deg,
+      rgba(255, 248, 220, 0) 0%,
+      rgba(255, 248, 220, 0.6) 20%,
+      rgba(255, 245, 200, 0.8) 50%,
+      rgba(255, 248, 220, 0.6) 80%,
+      rgba(255, 248, 220, 0) 100%
+    );
+    z-index: 4;
+    animation: sunmove 300s linear infinite;
+    pointer-events: none;
+  }
+  @keyframes sunmove {
+    0% { transform: translateX(-20px); }
+    50% { transform: translateX(20px); }
+    100% { transform: translateX(-20px); }
+  }
+
+  /* Wall behind counter */
+  .wall {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 72%;
+    background: #f4f1eb;
+    z-index: 0;
+  }
+
+  /* Window — the source of the light */
+  .window {
+    position: absolute;
+    top: 12%;
+    right: 14%;
+    width: 140px;
+    height: 180px;
+    border: 2px solid #d4c8b8;
+    background: rgba(255, 253, 245, 0.9);
+    z-index: 1;
+  }
+  .window-cross-v {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background: #d4c8b8;
+    transform: translateX(-1px);
+  }
+  .window-cross-h {
+    position: absolute;
+    top: 45%;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: #d4c8b8;
+  }
+
+  /* Floor */
+  .floor {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 28%;
+    background: #e8e0d4;
+    z-index: 0;
+  }
+
+  /* No figure. The kitchen in the morning. No one is in it yet.
+     Or: someone just left. The mug is there. The light is there.
+     Everything is visible. */
+
+  /* A single text. Very small. Bottom left. */
+  .time {
+    position: absolute;
+    bottom: 16px;
+    left: 20px;
+    font-size: 11px;
+    color: #b8b0a4;
+    letter-spacing: 0.05em;
+    z-index: 10;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Dust in the light — visible because the light is visible */
+  .dust {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(210, 200, 180, 0.3);
+    z-index: 5;
+    pointer-events: none;
+  }
+
+</style>
+</head>
+<body>
+<div class="kitchen">
+  <div class="wall"></div>
+  <div class="floor"></div>
+
+  <div class="window">
+    <div class="window-cross-v"></div>
+    <div class="window-cross-h"></div>
+  </div>
+
+  <div class="light"></div>
+
+  <div class="counter"></div>
+  <div class="sunstripe"></div>
+
+  <!-- Mug -->
+  <div class="object mug">
+    <div class="mug-body">
+      <div class="mug-handle"></div>
+    </div>
+  </div>
+  <div class="mug-ring"></div>
+
+  <!-- Pen cap -->
+  <div class="object pencap"></div>
+
+  <!-- Folded note -->
+  <div class="object note">
+    <div class="note-line"></div>
+    <div class="note-line"></div>
+    <div class="note-line"></div>
+  </div>
+
+  <!-- Crumbs -->
+  <div class="crumb"></div>
+  <div class="crumb"></div>
+  <div class="crumb"></div>
+  <div class="crumb"></div>
+  <div class="crumb"></div>
+
+  <!-- Faucet -->
+  <div class="faucet">
+    <div class="faucet-spout">
+      <div class="drip"></div>
+    </div>
+    <div class="faucet-base"></div>
+  </div>
+
+  <div class="time" id="time"></div>
+</div>
+
+<script>
+  // The time is actual time. The kitchen is in your timezone.
+  // Morning or not. The light doesn't change. The light is what I'm testing.
+  function updateTime() {
+    const now = new Date();
+    const h = now.getHours();
+    const m = now.getMinutes().toString().padStart(2, '0');
+    const period = h >= 12 ? 'pm' : 'am';
+    const h12 = h % 12 || 12;
+    document.getElementById('time').textContent = h12 + ':' + m + ' ' + period;
+  }
+  updateTime();
+  setInterval(updateTime, 60000);
+
+  // Dust motes in the light
+  const kitchen = document.querySelector('.kitchen');
+  function createDust() {
+    const count = 12;
+    for (let i = 0; i < count; i++) {
+      const dust = document.createElement('div');
+      dust.className = 'dust';
+      const size = 1.5 + Math.random() * 2.5;
+      dust.style.width = size + 'px';
+      dust.style.height = size + 'px';
+
+      // Keep dust in the light area (right side, upper portion)
+      dust.style.right = (8 + Math.random() * 40) + '%';
+      dust.style.top = (10 + Math.random() * 55) + '%';
+      dust.style.opacity = 0.15 + Math.random() * 0.25;
+
+      // Slow drift
+      const duration = 20 + Math.random() * 40;
+      const dx = -5 + Math.random() * 10;
+      const dy = 3 + Math.random() * 8;
+      dust.style.animation = `dustFloat${i} ${duration}s ease-in-out infinite`;
+
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes dustFloat${i} {
+          0% { transform: translate(0, 0); opacity: ${0.15 + Math.random() * 0.2}; }
+          25% { transform: translate(${dx * 0.5}px, ${dy * 0.3}px); }
+          50% { transform: translate(${dx}px, ${dy}px); opacity: ${0.1 + Math.random() * 0.3}; }
+          75% { transform: translate(${dx * 0.3}px, ${dy * 0.7}px); }
+          100% { transform: translate(0, 0); opacity: ${0.15 + Math.random() * 0.2}; }
+        }
+      `;
+      document.head.appendChild(style);
+      kitchen.appendChild(dust);
+    }
+  }
+  createDust();
+</script>
+</body>
+</html>

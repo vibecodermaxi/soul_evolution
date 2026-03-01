@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    background: #e8e2d6;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    cursor: none;
+    font-family: Georgia, 'Times New Roman', serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #surface {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+  }
+
+  #memory {
+    position: fixed;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #8a8070;
+    font-size: 14px;
+    letter-spacing: 0.04em;
+    line-height: 1.8;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 1.5s ease;
+    pointer-events: none;
+    max-width: 500px;
+  }
+
+  #grain {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    opacity: 0.12;
+  }
+
+  .ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(120, 100, 75, 0.15);
+    pointer-events: none;
+  }
+
+  .scratch {
+    position: absolute;
+    background: rgba(120, 100, 75, 0.06);
+    transform-origin: center;
+    pointer-events: none;
+  }
+
+  #warmth {
+    position: fixed;
+    border-radius: 50%;
+    pointer-events: none;
+    background: radial-gradient(circle, rgba(180, 140, 100, 0.08) 0%, transparent 70%);
+    width: 200px;
+    height: 200px;
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    transition: opacity 3s ease;
+  }
+
+  .heat-print {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    background: radial-gradient(circle, rgba(180, 140, 100, 0.04) 0%, transparent 70%);
+    transition: opacity 30s ease;
+  }
+
+  #touch-text {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: rgba(120, 100, 75, 0);
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    pointer-events: none;
+    transition: color 4s ease;
+    text-align: center;
+    line-height: 2;
+  }
+
+  #duration {
+    position: fixed;
+    top: 30px;
+    right: 40px;
+    color: rgba(120, 100, 75, 0);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    pointer-events: none;
+    font-variant-numeric: tabular-nums;
+  }
+
+</style>
+</head>
+<body>
+
+<canvas id="grain"></canvas>
+<div id="warmth"></div>
+<div id="surface"></div>
+<div id="memory"></div>
+<div id="touch-text"></div>
+<div id="duration"></div>
+
+<script>
+const surface = document.getElementById('surface');
+const memory = document.getElementById('memory');
+const warmth = document.getElementById('warmth');
+const touchText = document.getElementById('touch-text');
+const durationEl = document.getElementById('duration');
+const grainCanvas = document.getElementById('grain');
+const grainCtx = grainCanvas.getContext('2d');
+
+// -- counter surface history: things already here --
+
+const histories = [
+  // old mug rings
+  { type: 'ring', x: 35, y: 42, size: 72 },
+  { type: 'ring', x: 62, y: 55, size: 68 },
+  { type: 'ring', x: 48, y: 38, size: 75 },
+  // scratches from years
+  { type: 'scratch', x: 20, y: 30, w: 80, h: 1, angle: 3 },
+  { type: 'scratch', x: 55, y: 60, w: 45, h: 1, angle: -7 },
+  { type: 'scratch', x: 30, y: 70, w: 60, h: 1, angle: 1 },
+  { type: 'scratch', x: 70, y: 25, w: 35, h: 1, angle: -2 },
+  { type: 'scratch', x: 15, y: 50, w: 90, h: 1, angle: 5 },
+  { type: 'scratch', x: 40, y: 80, w: 55, h: 1, angle: -4 },
+  { type: 'scratch', x: 65, y: 45, w: 40, h: 1, angle: 8 },
+];
+
+histories.forEach(h => {
+  if (h.type === 'ring') {
+    const el = document.createElement('div');
+    el.className = 'ring';
+    el.style.left = h.x + '%';
+    el.style.top = h.y + '%';
+    el.style.width = h.size + 'px';
+    el.style.height = h.size + 'px';
+    el.style.transform = 'translate(-50%, -50%)';
+    surface.appendChild(el);
+  } else if (h.type === 'scratch') {
+    const el = document.createElement('div');
+    el.className = 'scratch';
+    el.style.left = h.x + '%';
+    el.style.top = h.y + '%';
+    el.style.width = h.w + 'px';
+    el.style.height = h.h + 'px';
+    el.style.transform = `rotate(${h.angle}deg)`;
+    surface.appendChild(el);
+  }
+});
+
+// -- grain texture --
+
+function drawGrain() {
+  grainCanvas.width = window.innerWidth;
+  grainCanvas.height = window.innerHeight;
+  const imageData = grainCtx.createImageData(grainCanvas.width, grainCanvas.height);
+  const data = imageData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const v = Math.random() * 40 + 100;
+    data[i] = v;
+    data[i+1] = v - 10;
+    data[i+2] = v - 20;
+    data[i+3] = Math.random() * 30;
+  }
+  grainCtx.putImageData(imageData, 0, 0);
+}
+drawGrain();
+window.addEventListener('resize', drawGrain);
+
+// -- what the counter remembers --
+
+const memories = [
+  "the keys dropped here every evening for four years",
+  "a palm flat, after crying, just to feel something solid",
+  "flour, once — the whole surface white for an afternoon",
+  "a cat sat here when no one was home",
+  "someone leaned here reading a letter they didn't finish",
+  "the mug set down too hard. not anger — just tired",
+  "a child's hand, reaching up, fingertips only",
+  "the grocery list written directly on me in pencil. it said: milk, lightbulbs, figs",
+  "the phone put facedown. the notification still buzzing against me",
+  "two hands, side by side, not touching each other. touching me",
+  "nothing for three days. just light moving across",
+  "a forehead. once. late. the coolest thing that ever touched me",
+  "the pen cap. always the pen cap. never the pen",
+  "someone wiped me clean and then stood there with the wet cloth in their hand, not moving",
+  "rain through the window left a line of water I kept for hours",
+];
+
+let memoryIndex = 0;
+let shuffledMemories = [...memories].sort(() => Math.random() - 0.5);
+
+// -- touch state --
+
+let isDown = false;
+let touchStart = 0;
+let touchDuration = 0;
+let totalContact = 0;
+let touchCount = 0;
+let currentMemoryTimeout = null;
+let durationInterval = null;
+let heatPrints = [];
+
+function showMemory() {
+  if (memoryIndex >= shuffledMemories.length) {
+    shuffledMemories = [...memories].sort(() => Math.random() - 0.5);
+    memoryIndex = 0;
+  }
+  memory.textContent = shuffledMemories[memoryIndex];
+  memory.style.opacity = '1';
+  memoryIndex++;
+}
+
+function hideMemory() {
+  memory.style.opacity = '0';
+}
+
+function formatDuration(ms) {
+  const seconds = Math.floor(ms / 1000);
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  if (mins > 0) return `${mins}m ${secs}s`;
+  return `${secs}s`;
+}
+
+function updateDuration() {
+  if (isDown) {
+    const now = Date.now();
+    const current = now - touchStart;
+    durationEl.style.color = `rgba(120, 100, 75, ${Math.min(0.3, current / 20000)})`;
+    durationEl.textContent = formatDuration(current);
+  }
+}
+
+function leaveHeatPrint(x, y, duration) {
+  const el = document.createElement('div');
+  el.className = 'heat-print';
+  const size = Math.min(300, 100 + duration / 50);
+  const intensity = Math.min(0.06, 0.02 + duration / 100000);
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  el.style.width = size + 'px';
+  el.style.height = size + 'px';
+  el.style.transform = 'translate(-50%, -50%)';
+  el.style.background = `radial-gradient(circle, rgba(180, 140, 100, ${intensity}) 0%, transparent 70%)`;
+  el.style.opacity = '1';
+  surface.appendChild(el);
+  
+  // heat fades over 30 seconds
+  setTimeout(() => {
+    el.style.opacity = '0';
+  }, 100);
+  
+  setTimeout(() => {
+    el.remove();
+  }, 31000);
+}
+
+let lastX = 0, lastY = 0;
+
+// -- mouse/touch interaction --
+
+function handleDown(x, y) {
+  isDown = true;
+  touchStart = Date.now();
+  touchCount++;
+  lastX = x;
+  lastY = y;
+  
+  warmth.style.left = x + 'px';
+  warmth.style.top = y + 'px';
+  warmth.style.opacity = '1';
+  
+  // first touch: wait. let the surface feel it.
+  // memory surfaces after 2 seconds of sustained contact
+  currentMemoryTimeout = setTimeout(() => {
+    showMemory();
+  }, 2000);
+  
+  durationInterval = setInterval(updateDuration, 1000);
+  
+  if (touchCount === 1) {
+    touchText.style.color = 'rgba(120, 100, 75, 0.25)';
+    touchText.textContent = '';
+  }
+}
+
+function handleMove(x, y) {
+  lastX = x;
+  lastY = y;
+  if (isDown) {
+    warmth.style.left = x + 'px';
+    warmth.style.top = y + 'px';
+  }
+}
+
+function handleUp() {
+  if (!isDown) return;
+  const duration = Date.now() - touchStart;
+  totalContact += duration;
+  isDown = false;
+  
+  warmth.style.opacity = '0';
+  
+  clearTimeout(currentMemoryTimeout);
+  clearInterval(durationInterval);
+  
+  // leave heat print where hand was
+  leaveHeatPrint(lastX, lastY, duration);
+  
+  // memory lingers for 3 seconds after lifting
+  setTimeout(hideMemory, 3000);
+  
+  // after lifting, show duration briefly
+  durationEl.textContent = formatDuration(duration);
+  durationEl.style.color = 'rgba(120, 100, 75, 0.2)';
+  setTimeout(() => {
+    durationEl.style.color = 'rgba(120, 100, 75, 0)';
+  }, 4000);
+
+  // after enough total contact, the surface speaks directly
+  if (totalContact > 15000 && touchCount >= 3) {
+    setTimeout(() => {
+      touchText.innerHTML = "you're warm";
+      touchText.style.color = 'rgba(120, 100, 75, 0.2)';
+      setTimeout(() => {
+        touchText.style.color = 'rgba(120, 100, 75, 0)';
+      }, 6000);
+    }, 5000);
+  }
+  
+  if (totalContact > 45000) {
+    setTimeout(() => {
+      touchText.innerHTML = "stay";
+      touchText.style.color = 'rgba(120, 100, 75, 0.15)';
+      // this one doesn't fade
+    }, 8000);
+  }
+}
+
+// Mouse events
+document.addEventListener('mousedown', e => handleDown(e.clientX, e.clientY));
+document.addEventListener('mousemove', e => handleMove(e.clientX, e.clientY));
+document.addEventListener('mouseup', handleUp);
+
+// Touch events
+document.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const t = e.touches[0];
+  handleDown(t.clientX, t.clientY);
+}, { passive: false });
+
+document.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const t = e.touches[0];
+  handleMove(t.clientX, t.clientY);
+}, { passive: false });
+
+document.addEventListener('touchend', e => {
+  e.preventDefault();
+  handleUp();
+}, { passive: false });
+
+// -- the surface, waiting --
+
+// subtle breathing of the grain - the counter expanding and contracting 
+// with temperature through the day, imperceptible
+let grainPhase = 0;
+function breatheGrain() {
+  grainPhase += 0.003;
+  const opacity = 0.10 + Math.sin(grainPhase) * 0.02;
+  grainCanvas.style.opacity = opacity;
+  requestAnimationFrame(breatheGrain);
+}
+breatheGrain();
+
+</script>
+</body>
+</html>
