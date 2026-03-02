@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #f4f1eb;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: Georgia, 'Times New Roman', serif;
+    overflow: hidden;
+  }
+
+  .kitchen {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  /* The light. Not warm-cores-in-darkness. Just: light. */
+  .light {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 55%;
+    height: 100%;
+    background: linear-gradient(
+      135deg,
+      #fffef9 0%,
+      #f7f3e8 40%,
+      #f4f1eb 100%
+    );
+    pointer-events: none;
+  }
+
+  /* Window shape — implied by the light falling */
+  .window-light {
+    position: absolute;
+    top: 12%;
+    right: 8%;
+    width: 280px;
+    height: 380px;
+    background: #fffef6;
+    opacity: 1;
+    /* Full opacity. No hiding. */
+  }
+
+  .window-bars {
+    position: absolute;
+    top: 12%;
+    right: 8%;
+    width: 280px;
+    height: 380px;
+    pointer-events: none;
+  }
+
+  .window-bars .h {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: #d4cfc4;
+  }
+
+  .window-bars .v {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 2px;
+    height: 100%;
+    background: #d4cfc4;
+  }
+
+  /* The counter. Not a symbol. A counter. */
+  .counter {
+    position: absolute;
+    bottom: 32%;
+    left: 6%;
+    width: 62%;
+    height: 3px;
+    background: #c8bfa8;
+  }
+
+  .counter-edge {
+    position: absolute;
+    bottom: calc(32% - 2px);
+    left: 6%;
+    width: 62%;
+    height: 2px;
+    background: #b5aa92;
+  }
+
+  .counter-shadow {
+    position: absolute;
+    bottom: calc(32% - 12px);
+    left: 6%;
+    width: 62%;
+    height: 10px;
+    background: linear-gradient(to bottom, rgba(180,170,150,0.08), transparent);
+  }
+
+  /* Cabinet below */
+  .cabinet {
+    position: absolute;
+    bottom: 0;
+    left: 6%;
+    width: 62%;
+    height: calc(32% - 14px);
+    background: #ede8dd;
+    border-top: 1px solid #ddd7c9;
+  }
+
+  .cabinet-line {
+    position: absolute;
+    bottom: 0;
+    left: calc(6% + 31%);
+    width: 1px;
+    height: calc(32% - 14px);
+    background: #ddd7c9;
+  }
+
+  /* The mug. Full visibility. You can see the ring, the handle, the color. */
+  .mug {
+    position: absolute;
+    bottom: calc(32% + 3px);
+    left: 28%;
+    width: 32px;
+    height: 28px;
+    background: #e8e2d4;
+    border: 2px solid #c4baa4;
+    border-radius: 0 0 4px 4px;
+  }
+
+  .mug-handle {
+    position: absolute;
+    bottom: calc(32% + 9px);
+    left: calc(28% + 32px);
+    width: 10px;
+    height: 16px;
+    border: 2px solid #c4baa4;
+    border-left: none;
+    border-radius: 0 8px 8px 0;
+    background: transparent;
+  }
+
+  .mug-rim {
+    position: absolute;
+    bottom: calc(32% + 29px);
+    left: calc(28% - 2px);
+    width: 36px;
+    height: 3px;
+    background: #c4baa4;
+    border-radius: 1px;
+  }
+
+  /* Coffee inside — visible */
+  .coffee {
+    position: absolute;
+    bottom: calc(32% + 5px);
+    left: calc(28% + 3px);
+    width: 26px;
+    height: 18px;
+    background: #8b7355;
+    border-radius: 0 0 2px 2px;
+    opacity: 1;
+  }
+
+  /* Steam — the only moving thing, and barely */
+  .steam {
+    position: absolute;
+    bottom: calc(32% + 34px);
+    left: calc(28% + 8px);
+  }
+
+  .steam-line {
+    position: absolute;
+    width: 1px;
+    height: 20px;
+    background: linear-gradient(to top, rgba(180,170,150,0.25), transparent);
+    animation: rise 4s ease-in-out infinite;
+  }
+
+  .steam-line:nth-child(1) { left: 0; animation-delay: 0s; }
+  .steam-line:nth-child(2) { left: 8px; animation-delay: 1.3s; }
+  .steam-line:nth-child(3) { left: 16px; animation-delay: 2.6s; }
+
+  @keyframes rise {
+    0% { opacity: 0; transform: translateY(0) scaleY(0.5); }
+    30% { opacity: 0.4; }
+    100% { opacity: 0; transform: translateY(-25px) scaleY(1); }
+  }
+
+  /* The pen cap. No pen. */
+  .pencap {
+    position: absolute;
+    bottom: calc(32% + 3px);
+    left: 42%;
+    width: 4px;
+    height: 12px;
+    background: #3d5a80;
+    border-radius: 2px 2px 0 0;
+  }
+
+  .pencap-clip {
+    position: absolute;
+    bottom: calc(32% + 10px);
+    left: calc(42% + 4px);
+    width: 2px;
+    height: 7px;
+    background: #3d5a80;
+    border-radius: 0 1px 1px 0;
+  }
+
+  /* The folded note — you can see it. In plain light. Still folded. */
+  .note {
+    position: absolute;
+    bottom: calc(32% + 3px);
+    left: 50%;
+    width: 38px;
+    height: 24px;
+    background: #f9f6ee;
+    border: 1px solid #d8d0be;
+    transform: rotate(-3deg);
+  }
+
+  .note-fold {
+    position: absolute;
+    bottom: calc(32% + 15px);
+    left: 50%;
+    width: 38px;
+    height: 1px;
+    background: #d8d0be;
+    transform: rotate(-3deg);
+  }
+
+  /* Crumbs — not two pixels this time. Visible. */
+  .crumb {
+    position: absolute;
+    background: #cbc2ab;
+    border-radius: 50%;
+  }
+
+  .crumb:nth-child(1) {
+    bottom: calc(32% + 4px);
+    left: 35%;
+    width: 3px;
+    height: 3px;
+  }
+
+  .crumb:nth-child(2) {
+    bottom: calc(32% + 6px);
+    left: 36.5%;
+    width: 2px;
+    height: 2px;
+  }
+
+  .crumb:nth-child(3) {
+    bottom: calc(32% + 3px);
+    left: 38%;
+    width: 4px;
+    height: 3px;
+    border-radius: 40%;
+  }
+
+  .crumb:nth-child(4) {
+    bottom: calc(32% + 5px);
+    left: 33%;
+    width: 2px;
+    height: 2px;
+  }
+
+  .crumb:nth-child(5) {
+    bottom: calc(32% + 3px);
+    left: 40%;
+    width: 3px;
+    height: 2px;
+  }
+
+  /* The mug ring — a stain from yesterday's cup, different spot */
+  .ring {
+    position: absolute;
+    bottom: calc(32% + 3px);
+    left: 22%;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(160, 140, 110, 0.2);
+    background: transparent;
+  }
+
+  /* The faucet — because you can see it now */
+  .faucet-base {
+    position: absolute;
+    bottom: calc(32% + 3px);
+    right: 22%;
+    width: 18px;
+    height: 8px;
+    background: #b8b0a0;
+    border-radius: 2px;
+  }
+
+  .faucet-neck {
+    position: absolute;
+    bottom: calc(32% + 11px);
+    right: calc(22% + 6px);
+    width: 6px;
+    height: 30px;
+    background: #b8b0a0;
+    border-radius: 3px 3px 0 0;
+  }
+
+  .faucet-spout {
+    position: absolute;
+    bottom: calc(32% + 38px);
+    right: calc(22% + 6px);
+    width: 22px;
+    height: 6px;
+    background: #b8b0a0;
+    border-radius: 3px;
+  }
+
+  /* Light falling on the counter — the window projected */
+  .counter-light {
+    position: absolute;
+    bottom: 32%;
+    left: 30%;
+    width: 200px;
+    height: 3px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255,254,245,0.6) 20%,
+      rgba(255,254,245,0.6) 80%,
+      transparent
+    );
+  }
+
+  /* The shadow of the mug — because light makes shadows */
+  .mug-shadow {
+    position: absolute;
+    bottom: calc(32% + 2px);
+    left: calc(28% + 34px);
+    width: 18px;
+    height: 3px;
+    background: rgba(160,150,130,0.12);
+    border-radius: 50%;
+    filter: blur(1px);
+  }
+
+  /* The pencap shadow */
+  .pencap-shadow {
+    position: absolute;
+    bottom: calc(32% + 2px);
+    left: calc(42% + 5px);
+    width: 8px;
+    height: 2px;
+    background: rgba(160,150,130,0.10);
+    border-radius: 50%;
+    filter: blur(1px);
+  }
+
+  /* Wall — the actual wall, visible */
+  .wall {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 68%;
+    background: #f4f1eb;
+  }
+
+  /* A single shelf, high up */
+  .shelf {
+    position: absolute;
+    top: 25%;
+    left: 8%;
+    width: 28%;
+    height: 2px;
+    background: #d4cfc4;
+  }
+
+  .shelf-bracket-l {
+    position: absolute;
+    top: calc(25% + 2px);
+    left: 10%;
+    width: 2px;
+    height: 14px;
+    background: #d4cfc4;
+  }
+
+  .shelf-bracket-r {
+    position: absolute;
+    top: calc(25% + 2px);
+    left: calc(8% + 24%);
+    width: 2px;
+    height: 14px;
+    background: #d4cfc4;
+  }
+
+  /* Something on the shelf — a small jar, a book leaning */
+  .jar {
+    position: absolute;
+    top: calc(25% - 18px);
+    left: 14%;
+    width: 14px;
+    height: 18px;
+    background: rgba(200, 190, 170, 0.4);
+    border: 1px solid #c8bfa8;
+    border-radius: 1px;
+  }
+
+  .jar-lid {
+    position: absolute;
+    top: calc(25% - 21px);
+    left: calc(14% - 1px);
+    width: 16px;
+    height: 3px;
+    background: #b5aa92;
+    border-radius: 1px;
+  }
+
+  .book {
+    position: absolute;
+    top: calc(25% - 22px);
+    left: 22%;
+    width: 10px;
+    height: 22px;
+    background: #a69478;
+    border-radius: 1px;
+    transform: rotate(8deg);
+    transform-origin: bottom center;
+  }
+
+  /* No figure. No one in the kitchen. Just the kitchen. Morning. */
+
+  /* Time — not a counter. Just the light changing, very slowly. */
+  .light-shift {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    animation: morning 120s linear forwards;
+    background: transparent;
+  }
+
+  @keyframes morning {
+    0% {
+      background: rgba(255, 252, 240, 0);
+    }
+    100% {
+      background: rgba(255, 252, 240, 0.06);
+    }
+  }
+
+  /* The window light moves — sun shifting over two minutes */
+  .window-light {
+    animation: sunshift 120s linear forwards;
+  }
+
+  @keyframes sunshift {
+    0% {
+      transform: translateX(0) translateY(0);
+    }
+    100% {
+      transform: translateX(-15px) translateY(8px);
+    }
+  }
+
+  .counter-light {
+    animation: lightcrawl 120s linear forwards;
+  }
+
+  @keyframes lightcrawl {
+    0% {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    100% {
+      transform: translateX(-20px);
+      opacity: 0.85;
+    }
+  }
+
+</style>
+</head>
+<body>
+<div class="kitchen">
+  <div class="wall"></div>
+  <div class="light"></div>
+  <div class="window-light"></div>
+  <div class="window-bars">
+    <div class="h"></div>
+    <div class="v"></div>
+  </div>
+
+  <div class="shelf"></div>
+  <div class="shelf-bracket-l"></div>
+  <div class="shelf-bracket-r"></div>
+  <div class="jar"></div>
+  <div class="jar-lid"></div>
+  <div class="book"></div>
+
+  <div class="counter"></div>
+  <div class="counter-edge"></div>
+  <div class="counter-shadow"></div>
+  <div class="counter-light"></div>
+  <div class="cabinet"></div>
+  <div class="cabinet-line"></div>
+
+  <div class="ring"></div>
+  <div class="mug"></div>
+  <div class="mug-handle"></div>
+  <div class="mug-rim"></div>
+  <div class="coffee"></div>
+  <div class="mug-shadow"></div>
+  <div class="steam">
+    <div class="steam-line"></div>
+    <div class="steam-line"></div>
+    <div class="steam-line"></div>
+  </div>
+
+  <div class="pencap"></div>
+  <div class="pencap-clip"></div>
+  <div class="pencap-shadow"></div>
+
+  <div class="note"></div>
+  <div class="note-fold"></div>
+
+  <div class="crumb"></div>
+  <div class="crumb"></div>
+  <div class="crumb"></div>
+  <div class="crumb"></div>
+  <div class="crumb"></div>
+
+  <div class="faucet-base"></div>
+  <div class="faucet-neck"></div>
+  <div class="faucet-spout"></div>
+
+  <div class="light-shift"></div>
+</div>
+</body>
+</html>

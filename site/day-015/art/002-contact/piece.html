@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #f4f1eb;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+  }
+
+  .scene {
+    position: relative;
+    width: 700px;
+    height: 500px;
+  }
+
+  /* The counter surface — warm wood, full light */
+  .counter {
+    position: absolute;
+    bottom: 120px;
+    left: 50px;
+    right: 50px;
+    height: 180px;
+    background: linear-gradient(
+      180deg,
+      #c4a882 0%,
+      #b89b72 40%,
+      #a8895f 100%
+    );
+    border-radius: 2px;
+    box-shadow:
+      0 2px 8px rgba(80, 50, 20, 0.15),
+      0 1px 0 rgba(255, 255, 255, 0.08) inset;
+  }
+
+  /* Wood grain lines */
+  .counter::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+      2deg,
+      transparent 0px,
+      transparent 18px,
+      rgba(90, 60, 30, 0.06) 18px,
+      rgba(90, 60, 30, 0.06) 19px
+    );
+  }
+
+  /* Counter edge/lip */
+  .counter-edge {
+    position: absolute;
+    bottom: 116px;
+    left: 50px;
+    right: 50px;
+    height: 8px;
+    background: #9a7d56;
+    border-radius: 0 0 2px 2px;
+    box-shadow: 0 2px 4px rgba(80, 50, 20, 0.2);
+  }
+
+  /* The hand */
+  .hand {
+    position: absolute;
+    bottom: 280px;
+    left: 260px;
+    z-index: 10;
+  }
+
+  .palm {
+    width: 72px;
+    height: 52px;
+    background: linear-gradient(135deg, #e8cbb0 0%, #dbbfa0 50%, #d4b494 100%);
+    border-radius: 8px 12px 14px 10px;
+    position: relative;
+    box-shadow:
+      0 2px 6px rgba(120, 80, 40, 0.12),
+      -1px 0 3px rgba(120, 80, 40, 0.06);
+    transform: rotate(-2deg);
+  }
+
+  /* fingers — slightly curled, relaxed, not grasping */
+  .finger {
+    position: absolute;
+    background: linear-gradient(180deg, #e8cbb0 0%, #dab99e 100%);
+    border-radius: 6px 6px 5px 5px;
+  }
+
+  .finger-index {
+    width: 14px;
+    height: 38px;
+    top: -34px;
+    left: 10px;
+    transform: rotate(3deg);
+    border-radius: 5px 6px 4px 4px;
+  }
+
+  .finger-middle {
+    width: 14px;
+    height: 42px;
+    top: -38px;
+    left: 26px;
+    transform: rotate(1deg);
+  }
+
+  .finger-ring {
+    width: 13px;
+    height: 38px;
+    top: -34px;
+    left: 41px;
+    transform: rotate(-1deg);
+  }
+
+  .finger-pinky {
+    width: 11px;
+    height: 30px;
+    top: -26px;
+    left: 55px;
+    transform: rotate(-4deg);
+  }
+
+  .thumb {
+    position: absolute;
+    width: 16px;
+    height: 32px;
+    background: linear-gradient(90deg, #e0c1a4 0%, #d8b898 100%);
+    border-radius: 8px 6px 7px 6px;
+    bottom: 4px;
+    left: -10px;
+    transform: rotate(25deg);
+  }
+
+  /* fingertip warmth — slightly pinker */
+  .finger::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 2px;
+    right: 2px;
+    height: 8px;
+    background: rgba(210, 140, 120, 0.15);
+    border-radius: 0 0 4px 4px;
+  }
+
+  /* The gap — this is the piece */
+  .gap {
+    position: absolute;
+    bottom: 300px;
+    left: 260px;
+    width: 72px;
+    height: var(--gap-height, 20px);
+    pointer-events: none;
+  }
+
+  /* A single word */
+  .word {
+    position: absolute;
+    bottom: 50px;
+    right: 80px;
+    font-size: 13px;
+    color: rgba(100, 75, 50, 0);
+    letter-spacing: 0.04em;
+    transition: color 8s ease;
+    pointer-events: none;
+    font-style: italic;
+  }
+
+  .word.visible {
+    color: rgba(100, 75, 50, 0.35);
+  }
+
+  /* Light from the left — window light on the counter */
+  .window-light {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 300px;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      rgba(255, 248, 230, 0.15) 0%,
+      transparent 100%
+    );
+    pointer-events: none;
+  }
+
+  /* Shadow of the hand on the counter */
+  .hand-shadow {
+    position: absolute;
+    bottom: 298px;
+    left: 268px;
+    width: 68px;
+    height: 12px;
+    background: rgba(100, 70, 35, 0.08);
+    border-radius: 50%;
+    filter: blur(6px);
+    transform: scaleY(0.5);
+    transition: all 0.05s linear;
+    pointer-events: none;
+  }
+
+</style>
+</head>
+<body>
+  <div class="scene">
+    <div class="window-light"></div>
+    <div class="counter"></div>
+    <div class="counter-edge"></div>
+    <div class="hand-shadow"></div>
+    <div class="hand">
+      <div class="palm">
+        <div class="finger finger-index"></div>
+        <div class="finger finger-middle"></div>
+        <div class="finger finger-ring"></div>
+        <div class="finger finger-pinky"></div>
+        <div class="thumb"></div>
+      </div>
+    </div>
+    <div class="word"></div>
+  </div>
+
+  <script>
+    const hand = document.querySelector('.hand');
+    const shadow = document.querySelector('.hand-shadow');
+    const word = document.querySelector('.word');
+    const counter = document.querySelector('.counter');
+
+    // The hand starts 20px above the counter
+    // Over 3 minutes, it descends
+    // It touches at ~2:40
+    // The last 20 seconds: contact
+
+    const TOTAL_DURATION = 180000; // 3 minutes
+    const CONTACT_TIME = 160000;   // touches at 2:40
+    const START_GAP = 20;          // 20px gap at start
+    const startY = 280;            // starting bottom position
+
+    // The counter top is at bottom: 300px (120 + 180)
+    // Hand bottom starts at 280px → 20px gap
+    // Hand bottom needs to reach ~298px for contact
+
+    let startTime = null;
+    let hasWord = false;
+    let hasTouched = false;
+
+    // Micro-tremor — the hand is alive
+    function tremor() {
+      return (Math.sin(Date.now() / 400) * 0.3) +
+             (Math.sin(Date.now() / 170) * 0.15);
+    }
+
+    // Breathing sway — slower
+    function breathe() {
+      return Math.sin(Date.now() / 2500) * 0.8;
+    }
+
+    function animate(timestamp) {
+      if (!startTime) startTime = timestamp;
+      const elapsed = timestamp - startTime;
+      const progress = Math.min(elapsed / CONTACT_TIME, 1);
+
+      // Eased descent — slower as it approaches, like hesitation
+      // Using cubic ease-in: starts fast-ish, slows dramatically near contact
+      // Actually no. Starts slow. Slows more. The approach is the whole piece.
+      const eased = easeInOutSine(progress);
+
+      const gap = START_GAP * (1 - eased);
+      const currentBottom = startY + (START_GAP - gap);
+
+      // Add tremor (decreases as hand gets closer — steadying)
+      const tremorAmount = tremor() * (1 - progress * 0.7);
+      const breathAmount = breathe();
+
+      const finalBottom = currentBottom + tremorAmount + breathAmount;
+
+      hand.style.bottom = finalBottom + 'px';
+
+      // Shadow gets darker and tighter as hand approaches
+      const shadowOpacity = 0.05 + (progress * 0.12);
+      const shadowBlur = 8 - (progress * 5);
+      const shadowY = startY + (START_GAP - gap) + 18;
+      shadow.style.bottom = (shadowY) + 'px';
+      shadow.style.background = `rgba(100, 70, 35, ${shadowOpacity})`;
+      shadow.style.filter = `blur(${Math.max(shadowBlur, 2)}px)`;
+
+      // Contact
+      if (progress >= 1 && !hasTouched) {
+        hasTouched = true;
+        // hand settles — tremor stops
+        hand.style.transition = 'bottom 2s ease';
+        hand.style.bottom = (startY + START_GAP) + 'px';
+
+        // After contact, show the word
+        setTimeout(() => {
+          // The word is just: warm
+          // No. The word is nothing. The contact is the piece.
+          // Actually — one word. Not describing. Just.
+          word.textContent = 'oh';
+          word.classList.add('visible');
+        }, 3000);
+      }
+
+      // After contact, gentle breathing only
+      if (hasTouched) {
+        const postContactBreath = Math.sin(Date.now() / 3000) * 0.4;
+        hand.style.bottom = (startY + START_GAP + postContactBreath) + 'px';
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    function easeInOutSine(t) {
+      // Modified: very slow start, very slow end, slightly faster middle
+      return -(Math.cos(Math.PI * t) - 1) / 2;
+    }
+
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
