@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #f4f1ec;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+    cursor: default;
+  }
+
+  .kitchen {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    /* No darkness. No warm core in void. Just light. */
+    background: linear-gradient(
+      180deg,
+      #f7f4ef 0%,
+      #f2efe8 40%,
+      #edeae3 100%
+    );
+  }
+
+  /* The window — where the light comes from */
+  .window {
+    position: absolute;
+    top: 8%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 280px;
+    height: 220px;
+    background: #fdfcf8;
+    border: 1px solid #d5d0c6;
+    box-shadow: 0 0 80px 40px rgba(253, 250, 240, 0.6);
+  }
+
+  .window-cross-v {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 1px;
+    height: 100%;
+    background: #c8c2b6;
+  }
+
+  .window-cross-h {
+    position: absolute;
+    top: 45%;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: #c8c2b6;
+  }
+
+  /* Light on the counter — actual sunlight shape */
+  .sunpatch {
+    position: absolute;
+    bottom: 28%;
+    left: 42%;
+    width: 180px;
+    height: 90px;
+    background: rgba(255, 252, 240, 0.7);
+    transform: skewX(-8deg);
+    filter: blur(2px);
+  }
+
+  /* The counter — full opacity. Visible. */
+  .counter {
+    position: absolute;
+    bottom: 25%;
+    left: 10%;
+    right: 10%;
+    height: 2px;
+    background: #b8b0a0;
+  }
+
+  /* Objects on the counter — all visible, nothing dim */
+  .mug {
+    position: absolute;
+    bottom: 25.5%;
+    left: 30%;
+    width: 24px;
+    height: 20px;
+    border: 2px solid #9e9486;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+  }
+
+  .mug-handle {
+    position: absolute;
+    bottom: 26.5%;
+    left: calc(30% + 22px);
+    width: 8px;
+    height: 10px;
+    border: 2px solid #9e9486;
+    border-left: none;
+    border-radius: 0 4px 4px 0;
+  }
+
+  /* The mug ring — from before, still there in the light */
+  .mug-ring {
+    position: absolute;
+    bottom: 25.3%;
+    left: 55%;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1px solid #c8bfae;
+  }
+
+  /* The folded note — still folded, but you can see it now */
+  .note {
+    position: absolute;
+    bottom: 25.5%;
+    left: 65%;
+    width: 28px;
+    height: 16px;
+    background: #faf8f2;
+    border: 1px solid #d5cfc3;
+    transform: rotate(-2deg);
+  }
+
+  /* Pen cap — no pen */
+  .pencap {
+    position: absolute;
+    bottom: 25.4%;
+    left: 48%;
+    width: 4px;
+    height: 14px;
+    background: #6b6560;
+    border-radius: 2px 2px 0 0;
+    transform: rotate(12deg);
+  }
+
+  /* Crumbs — still two pixels, but visible now */
+  .crumb {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    background: #b5ad9c;
+    border-radius: 50%;
+  }
+
+  .crumb-1 { bottom: 25.6%; left: 42%; }
+  .crumb-2 { bottom: 25.8%; left: 43.5%; }
+  .crumb-3 { bottom: 25.5%; left: 44.2%; }
+  .crumb-4 { bottom: 25.9%; left: 41%; }
+
+  /* The fig — on the counter now, in light */
+  .fig {
+    position: absolute;
+    bottom: 25.5%;
+    left: 22%;
+    width: 10px;
+    height: 12px;
+    background: #7d6b5e;
+    border-radius: 40% 40% 50% 50%;
+  }
+
+  .fig-stem {
+    position: absolute;
+    bottom: calc(25.5% + 12px);
+    left: calc(22% + 4px);
+    width: 2px;
+    height: 4px;
+    background: #6b7d5e;
+  }
+
+  /* The faucet */
+  .faucet-base {
+    position: absolute;
+    bottom: 25.5%;
+    left: 75%;
+    width: 6px;
+    height: 30px;
+    background: #a8a298;
+    border-radius: 2px;
+  }
+
+  .faucet-spout {
+    position: absolute;
+    bottom: calc(25.5% + 28px);
+    left: 75%;
+    width: 24px;
+    height: 4px;
+    background: #a8a298;
+    border-radius: 2px;
+  }
+
+  .faucet-drip {
+    position: absolute;
+    left: calc(75% + 22px);
+    width: 2px;
+    height: 6px;
+    background: #c8d4e0;
+    border-radius: 0 0 1px 1px;
+    animation: drip 4s ease-in infinite;
+  }
+
+  @keyframes drip {
+    0% { bottom: calc(25.5% + 28px); opacity: 0; height: 0; }
+    10% { opacity: 1; height: 6px; }
+    60% { bottom: calc(25.5% + 28px); }
+    85% { bottom: 25.5%; opacity: 1; }
+    86% { opacity: 0; }
+    100% { opacity: 0; }
+  }
+
+  /* The floor */
+  .floor {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 25%;
+    background: #e8e3da;
+    border-top: 1px solid #d5d0c6;
+  }
+
+  /* The sock — not in a drawer. On the floor by the door. Visible. */
+  .sock {
+    position: absolute;
+    bottom: 8%;
+    left: 15%;
+    width: 18px;
+    height: 8px;
+    background: #d5d0c6;
+    border-radius: 8px 8px 2px 2px;
+    transform: rotate(-15deg);
+  }
+
+  /* Dust — in the sunlight you can see dust */
+  .dust {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    background: rgba(210, 200, 180, 0.6);
+    border-radius: 50%;
+    animation: float linear infinite;
+  }
+
+  @keyframes float {
+    0% { transform: translate(0, 0); }
+    25% { transform: translate(3px, -5px); }
+    50% { transform: translate(-2px, -8px); }
+    75% { transform: translate(4px, -3px); }
+    100% { transform: translate(0, 0); }
+  }
+
+  /* No figure. The kitchen is empty. Morning. No one is in it yet. */
+
+  /* But: a shadow on the floor from someone just outside the frame */
+  .shadow {
+    position: absolute;
+    bottom: 2%;
+    right: 5%;
+    width: 40px;
+    height: 120px;
+    background: rgba(180, 172, 158, 0.15);
+    transform: skewX(-15deg);
+    border-radius: 2px;
+    animation: shadow-shift 20s ease-in-out infinite alternate;
+  }
+
+  @keyframes shadow-shift {
+    0% { transform: skewX(-15deg); }
+    100% { transform: skewX(-12deg); }
+  }
+
+  /* Time — the only text. Small. In the corner. */
+  .time {
+    position: absolute;
+    top: 92%;
+    right: 4%;
+    font-size: 11px;
+    color: #b8b0a0;
+    letter-spacing: 0.5px;
+  }
+
+</style>
+</head>
+<body>
+<div class="kitchen">
+  <div class="window">
+    <div class="window-cross-v"></div>
+    <div class="window-cross-h"></div>
+  </div>
+
+  <div class="sunpatch"></div>
+
+  <div class="counter"></div>
+
+  <div class="mug"></div>
+  <div class="mug-handle"></div>
+  <div class="mug-ring"></div>
+  <div class="note"></div>
+  <div class="pencap"></div>
+  <div class="fig"></div>
+  <div class="fig-stem"></div>
+
+  <div class="crumb crumb-1"></div>
+  <div class="crumb crumb-2"></div>
+  <div class="crumb crumb-3"></div>
+  <div class="crumb crumb-4"></div>
+
+  <div class="faucet-base"></div>
+  <div class="faucet-spout"></div>
+  <div class="faucet-drip"></div>
+
+  <div class="floor"></div>
+  <div class="sock"></div>
+
+  <div class="shadow"></div>
+
+  <div class="time"></div>
+</div>
+
+<script>
+  // Dust motes in the sunlight
+  const kitchen = document.querySelector('.kitchen');
+  const sunpatch = document.querySelector('.sunpatch');
+
+  for (let i = 0; i < 12; i++) {
+    const mote = document.createElement('div');
+    mote.className = 'dust';
+    // Place dust within and around the sunpatch area
+    const left = 38 + Math.random() * 28;
+    const bottom = 28 + Math.random() * 18;
+    mote.style.left = left + '%';
+    mote.style.bottom = bottom + '%';
+    mote.style.animationDuration = (6 + Math.random() * 8) + 's';
+    mote.style.animationDelay = (Math.random() * 6) + 's';
+    mote.style.opacity = 0.2 + Math.random() * 0.4;
+    kitchen.appendChild(mote);
+  }
+
+  // Real time — the kitchen exists right now
+  const timeEl = document.querySelector('.time');
+  function updateTime() {
+    const now = new Date();
+    let h = now.getHours();
+    let m = now.getMinutes();
+    const ampm = h >= 12 ? 'pm' : 'am';
+    h = h % 12 || 12;
+    m = m < 10 ? '0' + m : m;
+    timeEl.textContent = h + ':' + m + ' ' + ampm;
+  }
+  updateTime();
+  setInterval(updateTime, 60000);
+</script>
+</body>
+</html>

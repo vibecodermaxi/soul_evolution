@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    background: #f4f1ec;
+    color: #2a2a2a;
+    font-family: Georgia, serif;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+  }
+
+  #room {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  .sound-source {
+    position: absolute;
+    font-size: 13px;
+    color: #2a2a2a;
+    opacity: 1;
+    transition: none;
+    pointer-events: none;
+    white-space: nowrap;
+    line-height: 1.4;
+  }
+
+  /* No dimming. Full opacity. Plain light. */
+
+  #status {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: #888;
+    letter-spacing: 0.05em;
+  }
+
+  #enter-prompt {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 14px;
+    color: #2a2a2a;
+    cursor: pointer;
+    text-align: center;
+    line-height: 1.8;
+  }
+
+  #enter-prompt:hover {
+    color: #000;
+  }
+
+  .volume-bar {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+    font-size: 10px;
+    color: #aaa;
+  }
+
+  .vol-label {
+    font-size: 9px;
+    color: #bbb;
+    margin-bottom: 2px;
+  }
+
+  .vol-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .vol-name {
+    font-size: 9px;
+    color: #999;
+    width: 80px;
+    text-align: right;
+  }
+
+  .vol-level {
+    display: flex;
+    gap: 1px;
+  }
+
+  .vol-block {
+    width: 4px;
+    height: 8px;
+    background: #ddd;
+    transition: background 0.3s;
+  }
+
+  .vol-block.active {
+    background: #2a2a2a;
+  }
+
+  .interruption {
+    position: absolute;
+    font-size: 12px;
+    color: #2a2a2a;
+    font-style: italic;
+    opacity: 0;
+    animation: interrupt 4s ease-in-out forwards;
+    pointer-events: none;
+  }
+
+  @keyframes interrupt {
+    0% { opacity: 0; }
+    10% { opacity: 1; }
+    70% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+</style>
+</head>
+<body>
+
+<div id="room"></div>
+
+<div id="enter-prompt" onclick="startKitchen()">
+  step in<br>
+  <span style="font-size: 11px; color: #999;">(the light is already on)</span>
+</div>
+
+<div class="volume-bar" id="volume-bar" style="display:none;">
+</div>
+
+<div id="status" style="display:none;"></div>
+
+<script>
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const room = document.getElementById('room');
+const volumeBar = document.getElementById('volume-bar');
+const status = document.getElementById('status');
+let started = false;
+let sounds = [];
+let interruptions = [];
+let elapsedSeconds = 0;
+
+// Morning kitchen sounds — each is a synthesized texture
+// These are LOUD. Present. Not hidden.
+
+const soundDefs = [
+  {
+    name: 'faucet drip',
+    x: '35%', y: '28%',
+    text: 'drip',
+    volume: 0.6,
+    type: 'drip',
+    interval: 2400,
+    description: 'every 2.4 seconds'
+  },
+  {
+    name: 'refrigerator',
+    x: '72%', y: '45%',
+    text: 'hummmmmmmmm',
+    volume: 0.35,
+    type: 'hum',
+    freq: 60,
+    description: 'constant, 60hz'
+  },
+  {
+    name: 'radiator tick',
+    x: '12%', y: '60%',
+    text: 'tick',
+    volume: 0.4,
+    type: 'tick',
+    interval: 800,
+    irregularity: 0.6,
+    description: 'irregular, metallic'
+  },
+  {
+    name: 'traffic outside',
+    x: '50%', y: '8%',
+    text: '— passing —',
+    volume: 0.25,
+    type: 'traffic',
+    description: 'continuous, through glass'
+  },
+  {
+    name: 'chair scrape upstairs',
+    x: '40%', y: '4%',
+    text: 'scrrrk',
+    volume: 0.5,
+    type: 'scrape',
+    interval: 18000,
+    description: 'every ~18 seconds, above'
+  },
+  {
+    name: 'clock',
+    x: '88%', y: '22%',
+    text: 'tk',
+    volume: 0.45,
+    type: 'clock',
+    interval: 1000,
+    description: 'once per second, obvious'
+  },
+  {
+    name: 'bird (outside)',
+    x: '25%', y: '6%',
+    text: '♪',
+    volume: 0.3,
+    type: 'bird',
+    interval: 5000,
+    irregularity: 0.8,
+    description: 'sporadic, outside the window'
+  },
+  {
+    name: 'your breathing',
+    x: '50%', y: '75%',
+    text: '',
+    volume: 0.2,
+    type: 'breathing',
+    description: 'yours. not composed. whatever rate you bring.'
+  }
+];
+
+// Interruptions — morning things that happen once
+const interruptionDefs = [
+  { time: 12, text: 'a truck downshifts on the avenue', x: '50%', y: '5%' },
+  { time: 28, text: 'the ice maker drops', x: '74%', y: '50%' },
+  { time: 45, text: 'someone turns a key in the hall', x: '5%', y: '40%' },
+  { time: 67, text: 'a dog, briefly, from the courtyard', x: '60%', y: '3%' },
+  { time: 85, text: 'the fridge cycles off — sudden silence — then back', x: '72%', y: '48%' },
+  { time: 110, text: 'your stomach', x: '50%', y: '78%' },
+  { time: 140, text: 'a door closes downstairs', x: '8%', y: '90%' },
+  { time: 175, text: 'the radiator stops and the room gets louder', x: '12%', y: '63%' },
+  { time: 210, text: 'a phone vibrates in another room', x: '92%', y: '55%' },
+];
+
+function createOscillator(freq, type, gain) {
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  g.gain.value = gain;
+  osc.connect(g);
+  g.connect(audioCtx.destination);
+  return { osc, gain: g };
+}
+
+function noise(duration, volume) {
+  const bufferSize = audioCtx.sampleRate * duration;
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = (Math.random() * 2 - 1) * volume;
+  }
+  const source = audioCtx.createBufferSource();
+  source.buffer = buffer;
+  
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = 400;
+  
+  const g = audioCtx.createGain();
+  g.gain.value = volume;
+  
+  source.connect(filter);
+  filter.connect(g);
+  g.connect(audioCtx.destination);
+  source.start();
+}
+
+function playDrip() {
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(1800, audioCtx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.06);
+  g.gain.setValueAtTime(0.15, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+  osc.connect(g);
+  g.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.15);
+}
+
+function playTick(metallic) {
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type = 'square';
+  osc.frequency.value = metallic ? 3200 : 2000;
+  g.gain.setValueAtTime(0.08, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.03);
+  osc.connect(g);
+  g.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.04);
+}
+
+function playClock() {
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = 1000;
+  g.gain.setValueAtTime(0.06, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.02);
+  osc.connect(g);
+  g.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.025);
+}
+
+function playScrape() {
+  const bufferSize = audioCtx.sampleRate * 0.3;
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = (Math.random() * 2 - 1) * Math.sin(i / bufferSize * Math.PI);
+  }
+  const source = audioCtx.createBufferSource();
+  source.buffer = buffer;
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.value = 800;
+  filter.Q.value = 2;
+  const g = audioCtx.createGain();
+  g.gain.value = 0.1;
+  source.connect(filter);
+  filter.connect(g);
+  g.connect(audioCtx.destination);
+  source.start();
+}
+
+function playBird() {
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type = 'sine';
+  const t = audioCtx.currentTime;
+  osc.frequency.setValueAtTime(2200, t);
+  osc.frequency.linearRampToValueAtTime(3200, t + 0.08);
+  osc.frequency.linearRampToValueAtTime(2600, t + 0.15);
+  osc.frequency.linearRampToValueAtTime(3400, t + 0.22);
+  g.gain.setValueAtTime(0.04, t);
+  g.gain.linearRampToValueAtTime(0.06, t + 0.1);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+  osc.connect(g);
+  g.connect(audioCtx.destination);
+  osc.start(t);
+  osc.stop(t + 0.35);
+}
+
+let fridgeOsc = null;
+let fridgeGain = null;
+let fridgeOn = true;
+
+function startFridge() {
+  fridgeOsc = audioCtx.createOscillator();
+  fridgeGain = audioCtx.createGain();
+  fridgeOsc.type = 'sawtooth';
+  fridgeOsc.frequency.value = 60;
+  fridgeGain.gain.value = 0.03;
+  
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = 120;
+  
+  fridgeOsc.connect(filter);
+  filter.connect(fridgeGain);
+  fridgeGain.connect(audioCtx.destination);
+  fridgeOsc.start();
+}
+
+let trafficSource = null;
+let trafficGain = null;
+
+function startTraffic() {
+  const bufferSize = audioCtx.sampleRate * 4;
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = (Math.random() * 2 - 1);
+  }
+  trafficSource = audioCtx.createBufferSource();
+  trafficSource.buffer = buffer;
+  trafficSource.loop = true;
+  
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = 200;
+  
+  trafficGain = audioCtx.createGain();
+  trafficGain.gain.value = 0.02;
+  
+  trafficSource.connect(filter);
+  filter.connect(trafficGain);
+  trafficGain.connect(audioCtx.destination);
+  trafficSource.start();
+}
+
+function updateVolumeBar() {
+  volumeBar.innerHTML = '';
+  soundDefs.forEach((s, i) => {
+    const row = document.createElement('div');
+    row.className = 'vol-row';
+    
+    const name = document.createElement('span');
+    name.className = 'vol-name';
+    name.textContent = s.name;
+    
+    const level = document.createElement('div');
+    level.className = 'vol-level';
+    
+    const blocks = 8;
+    const active = Math.round(s.volume * blocks);
+    for (let b = 0; b < blocks; b++) {
+      const block = document.createElement('div');
+      block.className = 'vol-block' + (b < active ? ' active' : '');
+      level.appendChild(block);
+    }
+    
+    row.appendChild(name);
+    row.appendChild(level);
+    volumeBar.appendChild(row);
+  });
+}
+
+function placeSoundLabels() {
+  soundDefs.forEach((s, i) => {
+    if (s.type === 'breathing') return; // no label for your breathing
+    
+    const el = document.createElement('div');
+    el.className = 'sound-source';
+    el.style.left = s.x;
+    el.style.top = s.y;
+    el.id = 'sound-' + i;
+    
+    const nameSpan = document.createElement('span');
+    nameSpan.style.fontSize = '10px';
+    nameSpan.style.color = '#999';
+    nameSpan.textContent = s.name;
+    
+    const textSpan = document.createElement('span');
+    textSpan.style.marginLeft = '8px';
+    textSpan.id = 'text-' + i;
+    textSpan.textContent = '';
+    
+    el.appendChild(nameSpan);
+    el.appendChild(textSpan);
+    room.appendChild(el);
+  });
+  
+  // breathing label — different
+  const bEl = document.createElement('div');
+  bEl.className = 'sound-source';
+  bEl.style.left = '50%';
+  bEl.style.top = '75%';
+  bEl.style.transform = 'translateX(-50%)';
+  bEl.style.textAlign = 'center';
+  bEl.id = 'sound-breathing';
+  bEl.innerHTML = '<span style="font-size:10px;color:#999;">your breathing</span><br><span style="font-size:11px;color:#bbb;">(not composed — yours)</span>';
+  room.appendChild(bEl);
+}
+
+// Labels DON'T dim. Plain light. You know what everything is.
+// That's the difference. In the dark kitchen, labels faded.
+// In the morning kitchen, everything stays named.
+
+function flashText(index, text) {
+  const el = document.getElementById('text-' + index);
+  if (!el) return;
+  el.textContent = text;
+  el.style.color = '#2a2a2a';
+  setTimeout(() => {
+    el.textContent = '';
+  }, 300);
+}
+
+let timers = [];
+
+function startSounds() {
+  // Fridge
+  startFridge();
+  
+  // Traffic
+  startTraffic();
+  
+  // Drip
+  timers.push(setInterval(() => {
+    playDrip();
+    flashText(0, 'drip');
+  }, 2400));
+  
+  // Radiator tick — irregular
+  function radiatorTick() {
+    playTick(true);
+    flashText(2, 'tick');
+    const next = 800 + Math.random() * 800 * 0.6;
+    timers.push(setTimeout(radiatorTick, next));
+  }
+  radiatorTick();
+  
+  // Chair scrape
+  function chairScrape() {
+    playScrape();
+    flashText(4, 'scrrrk');
+    const next = 18000 + Math.random() * 8000 - 4000;
+    timers.push(setTimeout(chairScrape, next));
+  }
+  setTimeout(chairScrape, 8000);
+  
+  // Clock
+  timers.push(setInterval(() => {
+    playClock();
+    flashText(5, 'tk');
+  }, 1000));
+  
+  // Bird
+  function birdCall() {
+    playBird();
+    flashText(6, '♪');
+    const next = 5000 + Math.random() * 5000 * 0.8;
+    timers.push(setTimeout(birdCall, next));
+  }
+  setTimeout(birdCall, 3000);
+  
+  // Interruptions
+  interruptionDefs.forEach(inter => {
+    timers.push(setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'interruption';
+      el.style.left = inter.x;
+      el.style.top = inter.y;
+      el.textContent = inter.text;
+      room.appendChild(el);
+      
+      // Sound for some interruptions
+      if (inter.text.includes('ice maker')) {
+        setTimeout(() => {
+          for (let i = 0; i < 3; i++) {
+            setTimeout(() => playDrip(), i * 80);
+          }
+        }, 400);
+      }
+      if (inter.text.includes('key')) {
+        setTimeout(() => playTick(true), 200);
+      }
+      if (inter.text.includes('dog')) {
+        // Short burst of noise
+        noise(0.4, 0.08);
+      }
+      if (inter.text.includes('stomach')) {
+        // Low rumble
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = 45;
+        g.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
+        osc.connect(g);
+        g.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.9);
+      }
+      if (inter.text.includes('fridge cycles off')) {
+        // Kill fridge, restart after 3 seconds
+        fridgeGain.gain.setValueAtTime(0, audioCtx.currentTime);
+        setTimeout(() => {
+          fridgeGain.gain.setValueAtTime(0.03, audioCtx.currentTime);
+        }, 3000);
+      }
+      if (inter.text.includes('phone vibrates')) {
+        // Buzz pattern
+        for (let i = 0; i < 3; i++) {
+          setTimeout(() => {
+            const o = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            o.type = 'square';
+            o.frequency.value = 150;
+            g.gain.setValueAtTime(0.04, audioCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+            o.connect(g);
+            g.connect(audioCtx.destination);
+            o.start();
+            o.stop(audioCtx.currentTime + 0.18);
+          }, i * 300);
+        }
+      }
+      
+      setTimeout(() => el.remove(), 4500);
+    }, inter.time * 1000));
+  });
+}
+
+function startKitchen() {
+  if (started) return;
+  started = true;
+  
+  document.getElementById('enter-prompt').style.display = 'none';
+  status.style.display = 'block';
+  volumeBar.style.display = 'flex';
+  volumeBar.style.flexDirection = 'column';
+  
+  audioCtx.resume();
+  
+  placeSoundLabels();
+  updateVolumeBar();
+  startSounds();
+  
+  // Timer — morning time
+  const now = new Date();
+  function updateStatus() {
+    const d = new Date();
+    const h = d.getHours();
+    const m = String(d.getMinutes()).padStart(2, '0');
+    const s = String(d.getSeconds()).padStart(2, '0');
+    const period = h >= 12 ? 'pm' : 'am';
+    const h12 = h % 12 || 12;
+    status.textContent = `${h12}:${m}:${s} ${period} — standing in the kitchen`;
+    elapsedSeconds++;
+  }
+  updateStatus();
+  setInterval(updateStatus, 1000);
+}
+
+</script>
+
+</body>
+</html>

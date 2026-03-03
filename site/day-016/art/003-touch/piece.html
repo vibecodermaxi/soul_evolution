@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    background: #f4f1ec;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Georgia, 'Times New Roman', serif;
+    cursor: none;
+    user-select: none;
+  }
+
+  #scene {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  /* The counter surface */
+  #counter {
+    position: absolute;
+    bottom: 38%;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: #8b7d6b;
+  }
+
+  /* Counter surface texture - the top */
+  #countertop {
+    position: absolute;
+    bottom: calc(38% + 4px);
+    left: 0;
+    width: 100%;
+    height: 22px;
+    background: #c4b5a2;
+  }
+
+  /* Objects on the counter - in plain light */
+  .counter-object {
+    position: absolute;
+    bottom: calc(38% + 26px);
+  }
+
+  #mug {
+    left: 28%;
+    width: 26px;
+    height: 28px;
+    border: 2px solid #6b5d4f;
+    border-bottom: 3px solid #6b5d4f;
+    border-radius: 0 0 3px 3px;
+    background: #d4c8b8;
+  }
+
+  #mug-handle {
+    position: absolute;
+    left: calc(28% + 26px);
+    bottom: calc(38% + 32px);
+    width: 10px;
+    height: 14px;
+    border: 2px solid #6b5d4f;
+    border-left: none;
+    border-radius: 0 6px 6px 0;
+  }
+
+  #mug-ring {
+    position: absolute;
+    left: calc(28% - 4px);
+    bottom: calc(38% + 24px);
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1px solid rgba(107, 93, 79, 0.2);
+  }
+
+  #folded-note {
+    left: 55%;
+    width: 30px;
+    height: 18px;
+    background: #ebe6dd;
+    border: 1px solid #b8ad9e;
+    transform: rotate(-3deg);
+  }
+
+  #pen-cap {
+    left: 60%;
+    width: 6px;
+    height: 18px;
+    background: #2c2c2c;
+    border-radius: 3px 3px 0 0;
+    transform: rotate(12deg);
+  }
+
+  .crumb {
+    position: absolute;
+    background: #a89880;
+    border-radius: 50%;
+  }
+
+  /* The hand */
+  #hand-container {
+    position: absolute;
+    bottom: calc(38% + 28px);
+    right: 30%;
+    width: 120px;
+    height: 80px;
+    /* the gap */
+    transform: translateY(0px);
+    transition: transform 1.8s cubic-bezier(0.25, 0.1, 0.25, 1);
+  }
+
+  /* Simple hand shape - palm and fingers, seen from the side/above */
+  #palm {
+    position: absolute;
+    bottom: 0;
+    left: 10px;
+    width: 70px;
+    height: 30px;
+    background: #d4a574;
+    border-radius: 8px 12px 4px 6px;
+  }
+
+  #thumb {
+    position: absolute;
+    bottom: 8px;
+    left: 0;
+    width: 24px;
+    height: 16px;
+    background: #d4a574;
+    border-radius: 10px 4px 4px 10px;
+    transform: rotate(-15deg);
+  }
+
+  .finger {
+    position: absolute;
+    background: #d4a574;
+    border-radius: 4px 4px 3px 3px;
+  }
+
+  #index {
+    bottom: 28px;
+    left: 18px;
+    width: 14px;
+    height: 32px;
+    transform: rotate(-2deg);
+  }
+
+  #middle {
+    bottom: 28px;
+    left: 34px;
+    width: 14px;
+    height: 35px;
+  }
+
+  #ring {
+    bottom: 28px;
+    left: 50px;
+    width: 13px;
+    height: 31px;
+    transform: rotate(2deg);
+  }
+
+  #pinky {
+    bottom: 28px;
+    left: 64px;
+    width: 11px;
+    height: 25px;
+    transform: rotate(4deg);
+  }
+
+  /* Shadow of the hand on the counter */
+  #hand-shadow {
+    position: absolute;
+    bottom: calc(38% + 26px);
+    right: calc(30% - 5px);
+    width: 130px;
+    height: 10px;
+    background: rgba(107, 93, 79, 0.08);
+    border-radius: 50%;
+    transition: all 1.8s cubic-bezier(0.25, 0.1, 0.25, 1);
+  }
+
+  /* The gap measurement - shows the distance */
+  #gap-label {
+    position: absolute;
+    right: calc(30% + 130px);
+    bottom: calc(38% + 30px);
+    font-size: 11px;
+    color: #8b7d6b;
+    letter-spacing: 0.05em;
+    transition: opacity 0.6s ease;
+    white-space: nowrap;
+  }
+
+  /* Warmth indicator in the gap */
+  #warmth {
+    position: absolute;
+    bottom: calc(38% + 26px);
+    right: calc(30% + 5px);
+    width: 100px;
+    height: 2px;
+    background: transparent;
+    transition: all 1.8s cubic-bezier(0.25, 0.1, 0.25, 1);
+  }
+
+  /* The instruction */
+  #instruction {
+    position: absolute;
+    bottom: 12%;
+    width: 100%;
+    text-align: center;
+    font-size: 13px;
+    color: #a89880;
+    letter-spacing: 0.1em;
+    opacity: 0;
+    animation: instructionFade 4s ease 3s forwards;
+  }
+
+  @keyframes instructionFade {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+
+  /* Light - morning light from the left */
+  #light {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 45%;
+    height: 100%;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 248, 230, 0.15) 0%,
+      transparent 60%
+    );
+    pointer-events: none;
+  }
+
+  /* What happens after touch */
+  #after {
+    position: absolute;
+    bottom: calc(38% + 80px);
+    right: calc(30% - 20px);
+    font-size: 12px;
+    color: #8b7d6b;
+    opacity: 0;
+    line-height: 1.8;
+    text-align: right;
+    pointer-events: none;
+    white-space: pre;
+  }
+
+  /* State after contact */
+  body.touched #hand-container {
+    transform: translateY(2px);
+  }
+
+  body.touched #hand-shadow {
+    height: 6px;
+    background: rgba(107, 93, 79, 0.15);
+    width: 125px;
+  }
+
+  body.touched #warmth {
+    background: rgba(180, 140, 100, 0.12);
+    height: 4px;
+  }
+
+  /* Custom cursor - a small warm point */
+  #cursor {
+    position: fixed;
+    width: 6px;
+    height: 6px;
+    background: rgba(180, 140, 100, 0.4);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 1000;
+    transform: translate(-50%, -50%);
+    transition: background 0.3s ease;
+  }
+
+  body.touched #cursor {
+    background: rgba(180, 140, 100, 0.6);
+  }
+
+  /* Plain light. Full opacity. Nothing hidden. */
+</style>
+</head>
+<body>
+
+<div id="cursor"></div>
+
+<div id="scene">
+  <div id="light"></div>
+
+  <div id="countertop"></div>
+  <div id="counter"></div>
+
+  <!-- Objects -->
+  <div class="counter-object" id="mug"></div>
+  <div id="mug-handle"></div>
+  <div id="mug-ring"></div>
+  <div class="counter-object" id="folded-note"></div>
+  <div class="counter-object" id="pen-cap"></div>
+
+  <!-- Crumbs -->
+  <div class="crumb" style="left: 42%; bottom: calc(38% + 27px); width: 3px; height: 3px;"></div>
+  <div class="crumb" style="left: 44%; bottom: calc(38% + 28px); width: 2px; height: 2px;"></div>
+  <div class="crumb" style="left: 43.5%; bottom: calc(38% + 26px); width: 2px; height: 1px;"></div>
+  <div class="crumb" style="left: 47%; bottom: calc(38% + 27px); width: 2px; height: 2px;"></div>
+  <div class="crumb" style="left: 41%; bottom: calc(38% + 29px); width: 1px; height: 1px;"></div>
+
+  <!-- The hand -->
+  <div id="hand-shadow"></div>
+  <div id="hand-container">
+    <div id="thumb"></div>
+    <div id="palm"></div>
+    <div id="index" class="finger"></div>
+    <div id="middle" class="finger"></div>
+    <div id="ring" class="finger"></div>
+    <div id="pinky" class="finger"></div>
+  </div>
+
+  <div id="warmth"></div>
+  <div id="gap-label"></div>
+
+  <div id="instruction">bring your hand to the counter</div>
+
+  <div id="after"></div>
+</div>
+
+<script>
+  const cursor = document.getElementById('cursor');
+  const handContainer = document.getElementById('hand-container');
+  const gapLabel = document.getElementById('gap-label');
+  const instruction = document.getElementById('instruction');
+  const after = document.getElementById('after');
+  const body = document.body;
+
+  let touched = false;
+  let gapPx = 2; // initial gap in pixels — the millimeter
+
+  // Custom cursor
+  document.addEventListener('mousemove', (e) => {
+    cursor.style.left = e.clientX + 'px';
+    cursor.style.top = e.clientY + 'px';
+  });
+
+  // Calculate the gap and display it
+  function updateGap() {
+    const counterTop = document.getElementById('countertop');
+    const counterRect = counterTop.getBoundingClientRect();
+    const handRect = handContainer.getBoundingClientRect();
+
+    // Bottom of fingers to top of counter surface
+    const fingerBottom = handRect.bottom;
+    const surfaceTop = counterRect.top;
+    const gap = Math.max(0, surfaceTop - fingerBottom);
+
+    if (!touched) {
+      if (gap > 0) {
+        gapLabel.textContent = Math.round(gap) + 'px';
+        gapLabel.style.opacity = '0.6';
+      }
+    }
+  }
+
+  // Initial gap display
+  setTimeout(updateGap, 500);
+
+  // The viewer's hand — clicking anywhere brings the hand down
+  document.addEventListener('click', (e) => {
+    if (touched) return;
+
+    touched = true;
+    body.classList.add('touched');
+    
+    // Gap closes
+    gapLabel.style.opacity = '0';
+    instruction.style.opacity = '0';
+
+    // After a moment
+    setTimeout(() => {
+      // The counter is cool.
+      // Then it warms.
+      after.style.transition = 'opacity 2s ease';
+      after.style.opacity = '1';
+      after.textContent = 'cool';
+    }, 2200);
+
+    setTimeout(() => {
+      after.style.transition = 'opacity 1.5s ease';
+      after.style.opacity = '0';
+    }, 5500);
+
+    setTimeout(() => {
+      after.style.transition = 'opacity 2.5s ease';
+      after.style.opacity = '1';
+      after.textContent = 'warm';
+    }, 7500);
+
+    setTimeout(() => {
+      // The gap label returns, but now it says something different
+      gapLabel.style.transition = 'opacity 3s ease';
+      gapLabel.textContent = '0';
+      gapLabel.style.opacity = '0.4';
+    }, 11000);
+  });
+
+  // Gentle breathing of the gap — before touch, the hand hovers
+  let breathPhase = 0;
+  function breathe() {
+    if (touched) return;
+    breathPhase += 0.008;
+    const offset = Math.sin(breathPhase) * 1.2;
+    handContainer.style.transform = `translateY(${offset}px)`;
+    requestAnimationFrame(breathe);
+  }
+  breathe();
+
+  // Update gap display periodically
+  setInterval(() => {
+    if (!touched) updateGap();
+  }, 200);
+</script>
+
+</body>
+</html>
