@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #f4f1ec;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: Georgia, serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .kitchen {
+    position: relative;
+    width: 600px;
+    height: 400px;
+  }
+
+  /* The counter — same as before */
+  .counter {
+    position: absolute;
+    bottom: 120px;
+    left: 80px;
+    width: 440px;
+    height: 3px;
+    background: #3a3530;
+  }
+
+  /* Objects on the counter */
+  .mug {
+    position: absolute;
+    bottom: 123px;
+    left: 200px;
+    width: 14px;
+    height: 16px;
+    border: 2px solid #6b5e52;
+    border-radius: 0 0 3px 3px;
+    border-top: none;
+  }
+  .mug-handle {
+    position: absolute;
+    bottom: 127px;
+    left: 214px;
+    width: 6px;
+    height: 8px;
+    border: 2px solid #6b5e52;
+    border-left: none;
+    border-radius: 0 4px 4px 0;
+  }
+  .steam {
+    position: absolute;
+    bottom: 140px;
+    left: 204px;
+    width: 6px;
+    height: 12px;
+    opacity: 0.3;
+  }
+  .steam-line {
+    fill: none;
+    stroke: #6b5e52;
+    stroke-width: 1;
+  }
+
+  .crumb1 { position: absolute; bottom: 123px; left: 310px; width: 3px; height: 3px; background: #a09080; border-radius: 50%; }
+  .crumb2 { position: absolute; bottom: 124px; left: 340px; width: 2px; height: 2px; background: #a09080; border-radius: 50%; }
+  .crumb3 { position: absolute; bottom: 123px; left: 355px; width: 3px; height: 2px; background: #a09080; border-radius: 50%; }
+
+  .pencap {
+    position: absolute;
+    bottom: 123px;
+    left: 400px;
+    width: 3px;
+    height: 10px;
+    background: #4a4540;
+    border-radius: 1px 1px 0 0;
+  }
+
+  /* The note — unfolded now, flat on the counter */
+  .note {
+    position: absolute;
+    bottom: 123px;
+    left: 130px;
+    width: 40px;
+    height: 28px;
+    background: #ede8df;
+    border: 1px solid #c5b8a8;
+    border-radius: 1px;
+  }
+  .note-text {
+    position: absolute;
+    bottom: 130px;
+    left: 135px;
+    font-size: 4px;
+    color: #6b5e52;
+    letter-spacing: 0.3px;
+    font-style: italic;
+  }
+
+  /* Mug ring — where the mug was before, faint circle */
+  .mugring {
+    position: absolute;
+    bottom: 121px;
+    left: 260px;
+    width: 16px;
+    height: 16px;
+    border: 1px solid rgba(107, 94, 82, 0.15);
+    border-radius: 50%;
+  }
+
+  /* The figure — two pixels wide, starts near the counter */
+  .figure {
+    position: absolute;
+    bottom: 130px;
+    left: 280px;
+    width: 2px;
+    height: 28px;
+    background: #3a3530;
+    transition: none;
+  }
+
+  /* The hand — now at the side, not reaching */
+  .hand {
+    position: absolute;
+    bottom: 140px;
+    left: 278px;
+    width: 4px;
+    height: 2px;
+    background: #3a3530;
+    transition: none;
+  }
+
+  /* Warmth on counter from the touch — lingers */
+  .warmth {
+    position: absolute;
+    bottom: 119px;
+    left: 270px;
+    width: 30px;
+    height: 5px;
+    background: radial-gradient(ellipse, rgba(180, 140, 100, 0.12) 0%, transparent 70%);
+  }
+
+  .text {
+    position: absolute;
+    bottom: 50px;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    font-size: 13px;
+    color: #3a3530;
+    opacity: 0;
+    letter-spacing: 0.5px;
+  }
+
+  .light-patch {
+    position: absolute;
+    top: 0;
+    left: 150px;
+    width: 300px;
+    height: 400px;
+    background: linear-gradient(180deg, rgba(255,248,235,0.3) 0%, transparent 60%);
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<div class="kitchen">
+  <div class="light-patch"></div>
+  <div class="counter"></div>
+  <div class="note"></div>
+  <div class="note-text">come home safe</div>
+  <div class="mug"></div>
+  <div class="mug-handle"></div>
+  <svg class="steam" viewBox="0 0 6 12">
+    <path class="steam-line" d="M3,12 Q1,8 3,6 Q5,4 3,0" />
+  </svg>
+  <div class="crumb1"></div>
+  <div class="crumb2"></div>
+  <div class="crumb3"></div>
+  <div class="pencap"></div>
+  <div class="mugring"></div>
+  <div class="warmth"></div>
+  <div class="figure"></div>
+  <div class="hand"></div>
+  <div class="text" id="text1">the light stays on</div>
+</div>
+
+<script>
+  const figure = document.querySelector('.figure');
+  const hand = document.querySelector('.hand');
+  const text1 = document.getElementById('text1');
+  const warmth = document.querySelector('.warmth');
+  const steam = document.querySelector('.steam');
+
+  // The figure walks away. Slowly. To the right edge and then gone.
+  // Not a fade — a walk. Pixel by pixel.
+
+  let figureLeft = 280;
+  let started = false;
+  let phase = 0; // 0 = waiting, 1 = turning, 2 = walking, 3 = gone
+
+  // Wait 4 seconds. The figure has been standing here. The note is read.
+  // Then it walks.
+
+  setTimeout(() => {
+    phase = 1;
+    // Hand drops to side (already at side in this version — the touch happened, the hand withdrew)
+    setTimeout(() => {
+      phase = 2;
+      walk();
+    }, 1500);
+  }, 4000);
+
+  function walk() {
+    if (figureLeft > 580) {
+      // Figure has left the frame
+      figure.style.display = 'none';
+      hand.style.display = 'none';
+      phase = 3;
+
+      // The kitchen remains. Everything remains.
+      // The warmth where the hand touched fades slowly — body heat dissipating
+      let warmthOpacity = 1;
+      const fadeWarmth = setInterval(() => {
+        warmthOpacity -= 0.005;
+        if (warmthOpacity <= 0) {
+          warmth.style.opacity = '0';
+          clearInterval(fadeWarmth);
+        } else {
+          warmth.style.opacity = warmthOpacity;
+        }
+      }, 100);
+
+      // Steam continues. The mug is still warm.
+      // The crumbs are still there. The note is still unfolded.
+      // The light is still on.
+
+      // Text appears after the figure is gone
+      setTimeout(() => {
+        text1.style.transition = 'opacity 3s ease';
+        text1.style.opacity = '1';
+      }, 3000);
+
+      return;
+    }
+
+    figureLeft += 0.5;
+    figure.style.left = figureLeft + 'px';
+    hand.style.left = (figureLeft - 2) + 'px';
+
+    // As figure walks away, it stays fully visible. No fade.
+    // Full opacity. In the light. You watch it go.
+
+    requestAnimationFrame(() => {
+      setTimeout(walk, 50);
+    });
+  }
+
+  // Gentle steam animation
+  let steamPhase = 0;
+  setInterval(() => {
+    steamPhase += 0.05;
+    const opacity = 0.2 + Math.sin(steamPhase) * 0.1;
+    steam.style.opacity = opacity;
+  }, 100);
+</script>
+</body>
+</html>

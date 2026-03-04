@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #f4f1ec;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+  }
+
+  canvas {
+    display: block;
+  }
+
+  #text-layer {
+    position: fixed;
+    bottom: 40px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 14px;
+    color: #3a3632;
+    letter-spacing: 0.04em;
+    opacity: 0;
+    transition: opacity 1.2s ease;
+    pointer-events: none;
+    line-height: 1.8;
+  }
+
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="text-layer"></div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const textLayer = document.getElementById('text-layer');
+
+let W, H;
+let centerX, centerY;
+let counterY; // the counter surface y-position
+
+// The figure
+let figureX;
+let handX, handY;
+let targetX; // where the counter surface is
+let touched = false;
+let touchTime = 0;
+let reachProgress = 0; // 0 = morning position (7px gap), 1 = touching
+let reachSpeed = 0;
+let reachStarted = false;
+let reachStartTime = 0;
+
+// After touch
+let ripples = [];
+let warmthRadius = 0;
+let warmthAlpha = 0;
+
+// Objects on counter
+const objects = [];
+
+// Time
+let startTime = Date.now();
+let frameCount = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  centerX = W / 2;
+  centerY = H / 2;
+
+  counterY = centerY + H * 0.08;
+  figureX = centerX - 30;
+
+  // Counter surface X range
+  targetX = figureX + 28; // where hand meets counter
+
+  // Reset objects
+  objects.length = 0;
+
+  // Mug
+  objects.push({
+    type: 'mug',
+    x: centerX + 20,
+    y: counterY,
+    warmth: 0
+  });
+
+  // Crumbs
+  objects.push({
+    type: 'crumbs',
+    x: centerX + 60,
+    y: counterY - 1,
+    warmth: 0
+  });
+
+  // Pen cap
+  objects.push({
+    type: 'pencap',
+    x: centerX - 15,
+    y: counterY - 1,
+    warmth: 0
+  });
+
+  // Folded note
+  objects.push({
+    type: 'note',
+    x: centerX + 95,
+    y: counterY - 1,
+    warmth: 0
+  });
+}
+
+function drawCounter() {
+  // Counter surface — solid, visible, plain light
+  ctx.fillStyle = '#c8b9a8';
+  ctx.fillRect(centerX - 160, counterY, 320, 3);
+
+  // Subtle surface
+  ctx.fillStyle = '#d5c9ba';
+  ctx.fillRect(centerX - 160, counterY + 3, 320, 40);
+}
+
+function drawMug(obj) {
+  const x = obj.x, y = obj.y;
+  // Mug body
+  ctx.fillStyle = '#8b7d6b';
+  ctx.fillRect(x - 6, y - 14, 12, 14);
+  // Handle
+  ctx.strokeStyle = '#8b7d6b';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(x + 8, y - 7, 4, -Math.PI/2, Math.PI/2);
+  ctx.stroke();
+  // Mug ring stain
+  ctx.strokeStyle = 'rgba(139, 125, 107, 0.2)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.ellipse(x, y - 1, 8, 3, 0, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Warmth — steam appears after touch propagates
+  if (obj.warmth > 0.1) {
+    ctx.strokeStyle = `rgba(58, 54, 50, ${obj.warmth * 0.15})`;
+    ctx.lineWidth = 0.8;
+    const t = Date.now() / 1000;
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      const sy = y - 16 - i * 6;
+      const sway = Math.sin(t * 1.5 + i * 1.2) * 3;
+      ctx.moveTo(x - 2 + i * 2 + sway, sy);
+      ctx.quadraticCurveTo(x + sway * 0.5 + i, sy - 8, x - 1 + sway + i * 1.5, sy - 14);
+      ctx.stroke();
+    }
+  }
+}
+
+function drawCrumbs(obj) {
+  const x = obj.x, y = obj.y;
+  ctx.fillStyle = '#a09080';
+  // Three crumbs, three pixels each — same as before
+  ctx.fillRect(x, y - 3, 3, 3);
+  ctx.fillRect(x + 6, y - 2, 2, 2);
+  ctx.fillRect(x + 3, y - 4, 2, 2);
+}
+
+function drawPenCap(obj) {
+  const x = obj.x, y = obj.y;
+  ctx.fillStyle = '#5a5248';
+  ctx.fillRect(x, y - 8, 3, 8);
+  ctx.fillRect(x - 1, y - 9, 5, 2);
+}
+
+function drawNote(obj) {
+  const x = obj.x, y = obj.y;
+  ctx.fillStyle = '#e8e0d4';
+  ctx.strokeStyle = '#b8a898';
+  ctx.lineWidth = 0.5;
+  ctx.fillRect(x - 10, y - 12, 20, 12);
+  ctx.strokeRect(x - 10, y - 12, 20, 12);
+  // Fold line
+  ctx.beginPath();
+  ctx.moveTo(x - 10, y - 6);
+  ctx.lineTo(x + 10, y - 6);
+  ctx.stroke();
+}
+
+function drawFigure() {
+  const x = figureX;
+  const headY = counterY - 60;
+
+  // Body — two pixels wide, full opacity
+  ctx.fillStyle = '#3a3632';
+
+  // Head
+  ctx.fillRect(x - 1, headY, 2, 2);
+
+  // Torso
+  ctx.fillRect(x - 1, headY + 4, 2, 20);
+
+  // Legs
+  ctx.fillRect(x - 1, headY + 26, 2, 28);
+
+  return { x, headY };
+}
+
+function drawArm(figInfo) {
+  const x = figInfo.x;
+  const shoulderY = figInfo.headY + 8;
+
+  // The arm extends from shoulder toward counter
+  // Gap starts at 7px (morning piece), closes to 0 based on reachProgress
+
+  const gap = 7 * (1 - reachProgress);
+  const endX = targetX - gap;
+  const endY = counterY - 1;
+
+  ctx.strokeStyle = '#3a3632';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x + 1, shoulderY);
+
+  // Slight bend at elbow
+  const elbowX = x + (endX - x) * 0.5;
+  const elbowY = shoulderY + (endY - shoulderY) * 0.35;
+
+  ctx.quadraticCurveTo(elbowX, elbowY, endX, endY);
+  ctx.stroke();
+
+  // Hand — small
+  ctx.fillStyle = '#3a3632';
+  ctx.fillRect(endX - 1, endY - 1, 3, 2);
+
+  handX = endX;
+  handY = endY;
+
+  return { handX: endX, handY: endY, gap };
+}
+
+function drawRipples() {
+  for (let i = ripples.length - 1; i >= 0; i--) {
+    const r = ripples[i];
+    r.radius += 0.3;
+    r.alpha -= 0.003;
+
+    if (r.alpha <= 0) {
+      ripples.splice(i, 1);
+      continue;
+    }
+
+    ctx.strokeStyle = `rgba(58, 54, 50, ${r.alpha})`;
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+
+function drawWarmth() {
+  if (warmthAlpha <= 0) return;
+
+  // Warmth spreading from touch point along the counter
+  const gradient = ctx.createRadialGradient(
+    targetX, counterY, 0,
+    targetX, counterY, warmthRadius
+  );
+  gradient.addColorStop(0, `rgba(200, 170, 140, ${warmthAlpha * 0.12})`);
+  gradient.addColorStop(0.6, `rgba(200, 170, 140, ${warmthAlpha * 0.06})`);
+  gradient.addColorStop(1, 'rgba(200, 170, 140, 0)');
+
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(targetX, counterY, warmthRadius, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function updateWarmthPropagation() {
+  if (!touched) return;
+
+  const elapsed = (Date.now() - touchTime) / 1000;
+
+  // Warmth expands slowly from touch point
+  warmthRadius = Math.min(200, elapsed * 15);
+  warmthAlpha = Math.min(1, elapsed * 0.3);
+
+  // Objects warm up based on distance from touch point
+  for (const obj of objects) {
+    const dist = Math.abs(obj.x - targetX);
+    const delay = dist / 15; // warmth takes time to travel
+    const objElapsed = Math.max(0, elapsed - delay);
+    obj.warmth = Math.min(1, objElapsed * 0.4);
+  }
+}
+
+function showText() {
+  if (!touched) return;
+  const elapsed = (Date.now() - touchTime) / 1000;
+
+  if (elapsed > 3 && elapsed < 3.5) {
+    textLayer.style.opacity = 1;
+    textLayer.innerHTML = 'the counter is cool and then it isn\'t';
+  }
+}
+
+let phase = 'waiting'; // waiting -> reaching -> touching -> after
+
+function update() {
+  const elapsed = (Date.now() - startTime) / 1000;
+
+  // Phase: waiting
+  // The hand just sits at the morning position (7px gap) for 4 seconds
+  // Then it begins to close the gap
+  if (phase === 'waiting') {
+    if (elapsed > 4) {
+      phase = 'reaching';
+      reachStartTime = Date.now();
+    }
+  }
+
+  // Phase: reaching
+  // 12 seconds to close 7 pixels. Slow. You watch it happen.
+  if (phase === 'reaching') {
+    const reachElapsed = (Date.now() - reachStartTime) / 1000;
+    // Ease in — starts slow, accelerates slightly at the end
+    // Like the way you finally commit to touching something
+    const duration = 12;
+    const t = Math.min(1, reachElapsed / duration);
+    // Cubic ease-in: slow start, then commits
+    reachProgress = t * t * (3 - 2 * t); // smoothstep
+
+    if (t >= 1) {
+      phase = 'touching';
+      touched = true;
+      touchTime = Date.now();
+      reachProgress = 1;
+
+      // First ripple at contact
+      ripples.push({
+        x: targetX,
+        y: counterY,
+        radius: 0,
+        alpha: 0.3
+      });
+    }
+  }
+
+  // Phase: touching — warmth propagates, steam rises
+  if (phase === 'touching') {
+    const touchElapsed = (Date.now() - touchTime) / 1000;
+
+    // Occasional ripples
+    if (touchElapsed < 8 && Math.random() < 0.01) {
+      ripples.push({
+        x: targetX + (Math.random() - 0.5) * warmthRadius * 0.5,
+        y: counterY + (Math.random() - 0.5) * 10,
+        radius: 0,
+        alpha: 0.15
+      });
+    }
+  }
+
+  updateWarmthPropagation();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  // Background
+  ctx.fillStyle = '#f4f1ec';
+  ctx.fillRect(0, 0, W, H);
+
+  drawWarmth();
+  drawCounter();
+
+  // Draw objects
+  for (const obj of objects) {
+    switch (obj.type) {
+      case 'mug': drawMug(obj); break;
+      case 'crumbs': drawCrumbs(obj); break;
+      case 'pencap': drawPenCap(obj); break;
+      case 'note': drawNote(obj); break;
+    }
+  }
+
+  drawRipples();
+
+  const figInfo = drawFigure();
+  const armInfo = drawArm(figInfo);
+
+  showText();
+
+  frameCount++;
+  requestAnimationFrame(draw);
+}
+
+function loop() {
+  update();
+  requestAnimationFrame(loop);
+}
+
+window.addEventListener('resize', resize);
+resize();
+loop();
+draw();
+</script>
+</body>
+</html>

@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #f4f1ec;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Georgia, 'Times New Roman', serif;
+    overflow: hidden;
+  }
+
+  .kitchen {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  /* Light. Actual light. Coming from the left — a window. */
+  .window-light {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 55%;
+    height: 100%;
+    background: linear-gradient(
+      105deg,
+      rgba(255, 253, 245, 0.95) 0%,
+      rgba(255, 251, 240, 0.7) 25%,
+      rgba(244, 241, 236, 0.0) 70%
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Window frame shadow — bars of light on the floor/counter */
+  .window-bar {
+    position: absolute;
+    background: rgba(255, 252, 242, 0.6);
+    z-index: 2;
+    pointer-events: none;
+  }
+  .window-bar:nth-child(1) {
+    top: 28%;
+    left: 8%;
+    width: 35%;
+    height: 2px;
+    transform: rotate(12deg);
+  }
+  .window-bar:nth-child(2) {
+    top: 52%;
+    left: 5%;
+    width: 40%;
+    height: 2px;
+    transform: rotate(10deg);
+  }
+  .window-bar:nth-child(3) {
+    top: 18%;
+    left: 22%;
+    width: 2px;
+    height: 55%;
+    transform: rotate(3deg);
+  }
+
+  /* Counter — full opacity. Visible. */
+  .counter {
+    position: absolute;
+    bottom: 32%;
+    left: 10%;
+    right: 10%;
+    height: 3px;
+    background: #8a8178;
+    z-index: 5;
+  }
+
+  /* Objects on the counter. All fully visible. No hiding. */
+
+  .mug {
+    position: absolute;
+    bottom: calc(32% + 3px);
+    left: 28%;
+    z-index: 6;
+  }
+  .mug-body {
+    width: 28px;
+    height: 32px;
+    background: #e8e2d8;
+    border: 2px solid #9e9688;
+    border-radius: 0 0 4px 4px;
+    position: relative;
+  }
+  .mug-handle {
+    position: absolute;
+    right: -11px;
+    top: 6px;
+    width: 10px;
+    height: 16px;
+    border: 2px solid #9e9688;
+    border-left: none;
+    border-radius: 0 8px 8px 0;
+  }
+  .mug-rim {
+    width: 32px;
+    height: 3px;
+    background: #9e9688;
+    border-radius: 2px 2px 0 0;
+    margin-left: -2px;
+  }
+  /* Steam — the one moving thing */
+  .steam {
+    position: absolute;
+    bottom: calc(32% + 38px);
+    left: calc(28% + 8px);
+    z-index: 7;
+  }
+  .steam-line {
+    width: 2px;
+    height: 20px;
+    margin: 0 4px;
+    display: inline-block;
+    background: rgba(180, 175, 168, 0.0);
+    animation: steam-rise 4s ease-in-out infinite;
+    border-radius: 1px;
+  }
+  .steam-line:nth-child(1) { animation-delay: 0s; }
+  .steam-line:nth-child(2) { animation-delay: 1.3s; }
+  .steam-line:nth-child(3) { animation-delay: 2.6s; }
+
+  @keyframes steam-rise {
+    0% {
+      transform: translateY(0px) scaleY(0.5);
+      opacity: 0;
+    }
+    15% {
+      opacity: 0.35;
+    }
+    50% {
+      transform: translateY(-18px) scaleY(1) translateX(2px);
+      opacity: 0.25;
+    }
+    100% {
+      transform: translateY(-35px) scaleY(1.2) translateX(-1px);
+      opacity: 0;
+    }
+  }
+
+  /* Pen cap — no pen */
+  .pen-cap {
+    position: absolute;
+    bottom: calc(32% + 3px);
+    left: 55%;
+    width: 5px;
+    height: 14px;
+    background: #2c2c3a;
+    border-radius: 3px 3px 0 0;
+    z-index: 6;
+    transform: rotate(8deg);
+  }
+
+  /* Folded note */
+  .note {
+    position: absolute;
+    bottom: calc(32% + 3px);
+    left: 62%;
+    width: 30px;
+    height: 18px;
+    background: #fffef8;
+    border: 1px solid #d4cfc5;
+    z-index: 6;
+    box-shadow: 1px 1px 2px rgba(0,0,0,0.04);
+  }
+  .note-fold {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 8px;
+    height: 8px;
+    background: linear-gradient(135deg, #eae6de 50%, #fffef8 50%);
+  }
+
+  /* Crumbs */
+  .crumb {
+    position: absolute;
+    bottom: calc(32% + 4px);
+    background: #c4b9a8;
+    border-radius: 50%;
+    z-index: 6;
+  }
+  .crumb:nth-child(1) { left: 44%; width: 3px; height: 3px; }
+  .crumb:nth-child(2) { left: 45.5%; width: 2px; height: 2px; bottom: calc(32% + 5px); }
+  .crumb:nth-child(3) { left: 43%; width: 2px; height: 2px; }
+  .crumb:nth-child(4) { left: 46.5%; width: 1.5px; height: 1.5px; bottom: calc(32% + 3px); }
+  .crumb:nth-child(5) { left: 42%; width: 2px; height: 1.5px; bottom: calc(32% + 6px); }
+
+  /* Mug ring stain on counter */
+  .mug-ring {
+    position: absolute;
+    bottom: calc(32% - 1px);
+    left: 38%;
+    width: 26px;
+    height: 26px;
+    border: 1.5px solid rgba(178, 162, 140, 0.3);
+    border-radius: 50%;
+    z-index: 4;
+  }
+
+  /* The figure. Still two pixels wide. But now in light. */
+  .figure {
+    position: absolute;
+    bottom: calc(32% + 3px);
+    right: 22%;
+    width: 2px;
+    height: 38px;
+    background: #5c564e;
+    z-index: 6;
+    opacity: 1;
+  }
+
+  /* The hand. Reaching toward the counter this time. */
+  .hand {
+    position: absolute;
+    bottom: calc(32% + 12px);
+    right: calc(22% + 2px);
+    width: 7px;
+    height: 1.5px;
+    background: #5c564e;
+    z-index: 6;
+    opacity: 1;
+  }
+
+  /* Dust in the light — because light shows everything */
+  .dust {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(210, 200, 185, 0.0);
+    z-index: 3;
+    pointer-events: none;
+  }
+
+  .dust { animation: dust-float 12s ease-in-out infinite; }
+
+  @keyframes dust-float {
+    0% { transform: translate(0, 0); opacity: 0; }
+    20% { opacity: 0.4; }
+    50% { transform: translate(15px, -8px); opacity: 0.3; }
+    80% { opacity: 0.15; }
+    100% { transform: translate(25px, -3px); opacity: 0; }
+  }
+
+  /* Text — what you see when the light is on */
+  .text {
+    position: absolute;
+    bottom: 12%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 13px;
+    color: #8a8178;
+    letter-spacing: 0.02em;
+    z-index: 10;
+    opacity: 0;
+    animation: text-appear 1s ease-in 6s forwards;
+    white-space: nowrap;
+  }
+
+  @keyframes text-appear {
+    to { opacity: 1; }
+  }
+
+  /* Everything at full opacity. That's the point. */
+
+</style>
+</head>
+<body>
+
+<div class="kitchen">
+
+  <!-- Window light -->
+  <div class="window-light"></div>
+  <div class="window-bar"></div>
+  <div class="window-bar"></div>
+  <div class="window-bar"></div>
+
+  <!-- Dust motes in the light -->
+  <div class="dust" style="top: 25%; left: 18%; width: 3px; height: 3px; animation-delay: 0s;"></div>
+  <div class="dust" style="top: 40%; left: 25%; width: 2px; height: 2px; animation-delay: 2s;"></div>
+  <div class="dust" style="top: 33%; left: 14%; width: 2.5px; height: 2.5px; animation-delay: 4.5s;"></div>
+  <div class="dust" style="top: 55%; left: 20%; width: 2px; height: 2px; animation-delay: 7s;"></div>
+  <div class="dust" style="top: 22%; left: 30%; width: 1.5px; height: 1.5px; animation-delay: 3s;"></div>
+  <div class="dust" style="top: 48%; left: 12%; width: 3px; height: 3px; animation-delay: 9s;"></div>
+
+  <!-- Counter -->
+  <div class="counter"></div>
+
+  <!-- Mug ring (from before — the mug was moved) -->
+  <div class="mug-ring"></div>
+
+  <!-- Mug -->
+  <div class="mug">
+    <div class="mug-rim"></div>
+    <div class="mug-body">
+      <div class="mug-handle"></div>
+    </div>
+  </div>
+
+  <!-- Steam -->
+  <div class="steam">
+    <div class="steam-line"></div>
+    <div class="steam-line"></div>
+    <div class="steam-line"></div>
+  </div>
+
+  <!-- Crumbs -->
+  <div class="crumb"></div>
+  <div class="crumb"></div>
+  <div class="crumb"></div>
+  <div class="crumb"></div>
+  <div class="crumb"></div>
+
+  <!-- Pen cap -->
+  <div class="pen-cap"></div>
+
+  <!-- Folded note -->
+  <div class="note">
+    <div class="note-fold"></div>
+  </div>
+
+  <!-- The figure, two pixels wide, in full light now -->
+  <div class="figure"></div>
+
+  <!-- The hand, extending toward the counter -->
+  <div class="hand"></div>
+
+  <!-- What you see when the light is on -->
+  <div class="text">You can see everything and it's just a kitchen.</div>
+
+</div>
+
+</body>
+</html>
