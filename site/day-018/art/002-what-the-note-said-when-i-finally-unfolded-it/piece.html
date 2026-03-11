@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #e8e4df;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: Georgia, 'Times New Roman', serif;
+    overflow: hidden;
+  }
+
+  .note {
+    position: relative;
+    width: 340px;
+    cursor: default;
+  }
+
+  .paper {
+    background: #f5f2ec;
+    width: 100%;
+    padding: 40px 36px;
+    box-shadow: 
+      1px 2px 4px rgba(120, 100, 80, 0.15),
+      0 0 0 1px rgba(120, 100, 80, 0.05);
+    position: relative;
+    transform-origin: center top;
+  }
+
+  /* The fold line */
+  .paper::before {
+    content: '';
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    top: 50%;
+    height: 1px;
+    background: rgba(120, 100, 80, 0.12);
+  }
+
+  /* Very slight paper texture via shadow */
+  .paper::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      180deg,
+      rgba(255,255,255,0.03) 0%,
+      transparent 30%,
+      transparent 49%,
+      rgba(0,0,0,0.01) 50%,
+      transparent 51%,
+      transparent 100%
+    );
+    pointer-events: none;
+  }
+
+  .line {
+    font-size: 17px;
+    line-height: 1.75;
+    color: #3a352e;
+    opacity: 0;
+    transition: opacity 2.4s ease;
+    letter-spacing: 0.01em;
+  }
+
+  .line.visible {
+    opacity: 1;
+  }
+
+  /* The handwriting effect — slight irregularity */
+  .line:nth-child(1) { transform: rotate(-0.3deg); margin-left: 2px; }
+  .line:nth-child(2) { transform: rotate(0.1deg); margin-left: -1px; }
+  .line:nth-child(3) { transform: rotate(-0.15deg); margin-left: 3px; }
+  .line:nth-child(4) { transform: rotate(0.2deg); margin-left: 0px; }
+  .line:nth-child(5) { transform: rotate(-0.1deg); margin-left: 1px; }
+  .line:nth-child(6) { transform: rotate(0.25deg); margin-left: -2px; }
+  .line:nth-child(7) { transform: rotate(-0.2deg); margin-left: 4px; }
+  .line:nth-child(8) { transform: rotate(0.05deg); margin-left: 1px; }
+  .line:nth-child(9) { transform: rotate(-0.35deg); margin-left: 0px; }
+  .line:nth-child(10) { transform: rotate(0.15deg); margin-left: 2px; }
+
+  .line.last {
+    margin-top: 22px;
+  }
+
+  .line.initial {
+    margin-top: 14px;
+    font-style: italic;
+  }
+
+  /* The fold animation */
+  .fold-top {
+    background: #f5f2ec;
+    width: 100%;
+    height: 0;
+    transform-origin: center bottom;
+    transform: rotateX(0deg);
+    transition: transform 3s ease-in-out, height 3s ease-in-out, box-shadow 3s ease;
+    box-shadow: 
+      1px 1px 3px rgba(120, 100, 80, 0.1),
+      0 0 0 1px rgba(120, 100, 80, 0.05);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .fold-top.folded {
+    height: 180px;
+    transform: rotateX(175deg);
+    box-shadow: 
+      0 -1px 8px rgba(120, 100, 80, 0.12);
+  }
+
+  .instruction {
+    position: fixed;
+    bottom: 32px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 13px;
+    color: #9e9688;
+    letter-spacing: 0.05em;
+    opacity: 0;
+    transition: opacity 1.5s ease;
+  }
+
+  .instruction.visible {
+    opacity: 1;
+  }
+
+  .instruction.fading {
+    opacity: 0;
+    transition: opacity 3s ease;
+  }
+</style>
+</head>
+<body>
+
+<div class="note" id="note">
+  <div class="fold-top folded" id="foldTop"></div>
+  <div class="paper" id="paper">
+    <div class="line" data-delay="800">The faucet takes forty seconds.</div>
+    <div class="line" data-delay="2200">I know I already told you that.</div>
+    <div class="line" data-delay="4400">The fig leans toward the window by Thursday</div>
+    <div class="line" data-delay="5600">so turn it or it'll drop leaves on the counter</div>
+    <div class="line" data-delay="7000">where you're probably standing right now.</div>
+    <div class="line" data-delay="9500">I left the mug. The blue one.</div>
+    <div class="line" data-delay="11500">I thought about taking it but a kitchen</div>
+    <div class="line" data-delay="13000">should have a mug in it that someone chose.</div>
+    <div class="line last" data-delay="16000">I hope you use it.</div>
+    <div class="line initial" data-delay="19500">— S.</div>
+  </div>
+</div>
+
+<div class="instruction" id="instruction"></div>
+
+<script>
+  const foldTop = document.getElementById('foldTop');
+  const lines = document.querySelectorAll('.line');
+  const instruction = document.getElementById('instruction');
+  let unfolded = false;
+  let revealed = false;
+
+  // Show instruction after a moment
+  setTimeout(() => {
+    instruction.textContent = 'click to unfold';
+    instruction.classList.add('visible');
+  }, 2000);
+
+  document.getElementById('note').addEventListener('click', function handler() {
+    if (unfolded) return;
+    unfolded = true;
+
+    // Fade instruction
+    instruction.classList.add('fading');
+
+    // Unfold
+    foldTop.classList.remove('folded');
+
+    // After unfold animation, reveal lines
+    setTimeout(() => {
+      revealLines();
+    }, 2800);
+
+    // Remove click handler
+    this.removeEventListener('click', handler);
+  });
+
+  function revealLines() {
+    if (revealed) return;
+    revealed = true;
+
+    lines.forEach((line) => {
+      const delay = parseInt(line.getAttribute('data-delay'), 10);
+      setTimeout(() => {
+        line.classList.add('visible');
+      }, delay);
+    });
+  }
+</script>
+
+</body>
+</html>

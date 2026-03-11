@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #e8e4df;
+    font-family: Georgia, 'Times New Roman', serif;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    cursor: default;
+  }
+
+  .kitchen {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+
+  /* Morning light — not warm cores in darkness. Light. Actual light. */
+  .light {
+    position: absolute;
+    top: -10%;
+    right: -5%;
+    width: 70vw;
+    height: 80vh;
+    background: radial-gradient(
+      ellipse at 30% 20%,
+      rgba(255, 253, 245, 0.95) 0%,
+      rgba(255, 250, 235, 0.6) 30%,
+      rgba(255, 248, 228, 0.2) 60%,
+      transparent 100%
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* The window casting the light */
+  .window-frame {
+    position: absolute;
+    top: 8vh;
+    right: 6vw;
+    width: 22vw;
+    min-width: 180px;
+    height: 35vh;
+    min-height: 200px;
+    border: 2px solid #b8b0a4;
+    z-index: 2;
+  }
+
+  .window-frame .mullion-v {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background: #b8b0a4;
+  }
+
+  .window-frame .mullion-h {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: #b8b0a4;
+  }
+
+  /* Counter — fully visible, actual color, actual material */
+  .counter {
+    position: absolute;
+    bottom: 28vh;
+    left: 8vw;
+    width: 60vw;
+    height: 3px;
+    background: #8a7e72;
+    z-index: 3;
+  }
+
+  .counter-edge {
+    position: absolute;
+    bottom: calc(28vh - 18px);
+    left: 8vw;
+    width: 60vw;
+    height: 18px;
+    background: linear-gradient(to bottom, #8a7e72, #7d7168);
+    z-index: 2;
+  }
+
+  /* Backsplash */
+  .backsplash {
+    position: absolute;
+    bottom: calc(28vh + 3px);
+    left: 8vw;
+    width: 60vw;
+    height: 25vh;
+    background: #d4cfc8;
+    z-index: 1;
+  }
+
+  /* Below counter — cabinets suggested */
+  .below-counter {
+    position: absolute;
+    bottom: 0;
+    left: 8vw;
+    width: 60vw;
+    height: calc(28vh - 18px);
+    background: #c8c1b7;
+    z-index: 1;
+  }
+
+  .cabinet-line {
+    position: absolute;
+    left: 8vw;
+    width: 1px;
+    height: calc(28vh - 18px);
+    bottom: 0;
+    background: #b5ae a3;
+    z-index: 2;
+  }
+
+  /* Floor */
+  .floor {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100vw;
+    height: 10vh;
+    background: linear-gradient(to bottom, #c2bbb1, #b8b1a6);
+    z-index: 0;
+  }
+
+  /* Objects on the counter — visible. In light. Not dim. */
+
+  /* Mug — full opacity */
+  .mug {
+    position: absolute;
+    bottom: calc(28vh + 3px);
+    left: 28vw;
+    z-index: 5;
+  }
+
+  .mug-body {
+    width: 36px;
+    height: 38px;
+    background: #f5f2ec;
+    border: 2px solid #a89e92;
+    border-radius: 0 0 4px 4px;
+    position: relative;
+  }
+
+  .mug-handle {
+    position: absolute;
+    right: -14px;
+    top: 6px;
+    width: 14px;
+    height: 20px;
+    border: 2px solid #a89e92;
+    border-left: none;
+    border-radius: 0 10px 10px 0;
+  }
+
+  .mug-inside {
+    position: absolute;
+    top: 0;
+    left: 3px;
+    right: 3px;
+    height: 8px;
+    background: #3e3428;
+    border-radius: 0 0 2px 2px;
+    opacity: 0.7;
+  }
+
+  /* Steam — visible, gentle, real */
+  .steam {
+    position: absolute;
+    bottom: calc(28vh + 41px);
+    left: calc(28vw + 8px);
+    z-index: 6;
+    pointer-events: none;
+  }
+
+  .steam-line {
+    position: absolute;
+    width: 2px;
+    background: rgba(180, 175, 168, 0.0);
+    border-radius: 1px;
+    animation: steam-rise linear infinite;
+  }
+
+  .steam-line:nth-child(1) {
+    left: 0px;
+    height: 30px;
+    animation-duration: 3.5s;
+    animation-delay: 0s;
+  }
+  .steam-line:nth-child(2) {
+    left: 8px;
+    height: 24px;
+    animation-duration: 4.2s;
+    animation-delay: 1.1s;
+  }
+  .steam-line:nth-child(3) {
+    left: 16px;
+    height: 28px;
+    animation-duration: 3.8s;
+    animation-delay: 0.6s;
+  }
+
+  @keyframes steam-rise {
+    0% {
+      transform: translateY(0) scaleX(1);
+      opacity: 0;
+      background: rgba(180, 175, 168, 0.35);
+    }
+    15% {
+      opacity: 1;
+      background: rgba(180, 175, 168, 0.35);
+    }
+    50% {
+      transform: translateY(-35px) scaleX(1.5);
+      opacity: 0.6;
+      background: rgba(180, 175, 168, 0.2);
+    }
+    100% {
+      transform: translateY(-70px) scaleX(2);
+      opacity: 0;
+      background: rgba(180, 175, 168, 0);
+    }
+  }
+
+  /* Pen cap — sitting there, no pen */
+  .pen-cap {
+    position: absolute;
+    bottom: calc(28vh + 3px);
+    left: 42vw;
+    width: 6px;
+    height: 16px;
+    background: #2a2520;
+    border-radius: 3px 3px 0 0;
+    z-index: 5;
+    /* full opacity */
+  }
+
+  .pen-cap-clip {
+    position: absolute;
+    top: 1px;
+    right: -2px;
+    width: 2px;
+    height: 10px;
+    background: #3a3530;
+    border-radius: 0 1px 1px 0;
+  }
+
+  /* Folded note — visible, readable. In the light you can see the fold. */
+  .note {
+    position: absolute;
+    bottom: calc(28vh + 3px);
+    left: 18vw;
+    width: 54px;
+    height: 32px;
+    background: #faf8f4;
+    border: 1px solid #d4cfc8;
+    z-index: 5;
+    transform: rotate(-2deg);
+    box-shadow: 1px 1px 3px rgba(0,0,0,0.06);
+  }
+
+  .note-fold {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    border-bottom: 1px solid #e8e4df;
+  }
+
+  /* Writing visible on the note — in plain light you can almost read it */
+  .note-line {
+    position: absolute;
+    height: 1px;
+    background: #8a8078;
+    opacity: 0.5;
+    left: 8px;
+  }
+  .note-line:nth-child(2) { top: 8px; width: 32px; }
+  .note-line:nth-child(3) { top: 13px; width: 28px; }
+  .note-line:nth-child(4) { top: 18px; width: 15px; }
+
+  /* Crumbs — visible now. In light. You can see them. */
+  .crumb {
+    position: absolute;
+    bottom: calc(28vh + 3px);
+    background: #b5a48e;
+    border-radius: 50%;
+    z-index: 5;
+  }
+
+  .crumb:nth-child(1) { left: 35vw; width: 3px; height: 3px; }
+  .crumb:nth-child(2) { left: calc(35vw + 8px); width: 2px; height: 2px; }
+  .crumb:nth-child(3) { left: calc(35vw + 14px); width: 2px; height: 3px; }
+  .crumb:nth-child(4) { left: calc(35vw + 5px); width: 1px; height: 1px; bottom: calc(28vh + 5px); }
+  .crumb:nth-child(5) { left: calc(35vw + 20px); width: 2px; height: 2px; }
+
+  /* Mug ring — old, on the counter surface. Light catches it. */
+  .mug-ring {
+    position: absolute;
+    bottom: calc(28vh + 1px);
+    left: 48vw;
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(138, 126, 114, 0.2);
+    border-radius: 50%;
+    z-index: 4;
+  }
+
+  /* The hand. The hand touches the counter. */
+  .hand {
+    position: absolute;
+    bottom: calc(28vh + 3px);
+    left: 52vw;
+    z-index: 10;
+  }
+
+  .fingertips {
+    position: relative;
+    display: flex;
+    gap: 3px;
+  }
+
+  .finger {
+    width: 5px;
+    border-radius: 3px 3px 0 0;
+    background: #c9b8a4;
+  }
+
+  .finger:nth-child(1) { height: 8px; }
+  .finger:nth-child(2) { height: 10px; }
+  .finger:nth-child(3) { height: 11px; }
+  .finger:nth-child(4) { height: 9px; }
+
+  /* Touch shadow — the fingers are ON the counter */
+  .touch-shadow {
+    position: absolute;
+    bottom: -1px;
+    left: -1px;
+    right: -1px;
+    height: 2px;
+    background: rgba(0,0,0,0.08);
+    border-radius: 50%;
+  }
+
+  /* The figure — not two pixels this time. Visible. */
+  .figure {
+    position: absolute;
+    bottom: calc(28vh - 18px);
+    left: calc(52vw - 10px);
+    z-index: 9;
+  }
+
+  .torso {
+    width: 16px;
+    height: 45px;
+    background: #6b6159;
+    border-radius: 4px 4px 0 0;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  .head {
+    width: 12px;
+    height: 14px;
+    background: #c9b8a4;
+    border-radius: 50%;
+    margin: 0 auto;
+    position: relative;
+    top: -2px;
+  }
+
+  .arm {
+    position: absolute;
+    width: 4px;
+    height: 32px;
+    background: #6b6159;
+    top: 4px;
+    border-radius: 2px;
+  }
+
+  .arm-left {
+    left: -6px;
+    transform: rotate(5deg);
+  }
+
+  .arm-right {
+    right: -6px;
+    transform-origin: top center;
+    transform: rotate(-40deg);
+    /* reaching to the counter */
+  }
+
+  .forearm-right {
+    position: absolute;
+    bottom: -14px;
+    right: 0;
+    width: 4px;
+    height: 16px;
+    background: #c9b8a4;
+    border-radius: 2px;
+    transform: rotate(20deg);
+  }
+
+  /* Light stripe on the floor from the window */
+  .floor-light {
+    position: absolute;
+    bottom: 0;
+    right: 10vw;
+    width: 28vw;
+    height: 10vh;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 252, 240, 0.5) 0%,
+      rgba(255, 250, 235, 0.2) 60%,
+      transparent 100%
+    );
+    z-index: 1;
+    transform: skewX(-15deg);
+  }
+
+  /* Window mullion shadows on counter */
+  .light-bar {
+    position: absolute;
+    bottom: calc(28vh + 4px);
+    height: 2px;
+    background: rgba(255, 252, 242, 0.4);
+    z-index: 4;
+    pointer-events: none;
+  }
+
+  .light-bar:nth-child(1) {
+    left: 30vw;
+    width: 20vw;
+  }
+
+  .light-bar:nth-child(2) {
+    left: 35vw;
+    width: 15vw;
+    bottom: calc(28vh + 8px);
+    opacity: 0.3;
+  }
+
+  /* Time of day — not metadata. The window shows outside. */
+  .outside {
+    position: absolute;
+    top: 8vh;
+    right: 6vw;
+    width: 22vw;
+    min-width: 180px;
+    height: 35vh;
+    min-height: 200px;
+    z-index: 0;
+    background: linear-gradient(
+      to bottom,
+      #c5d5e0 0%,
+      #dde5eb 40%,
+      #e8eaed 100%
+    );
+    overflow: hidden;
+  }
+
+  /* Tree branch barely visible outside */
+  .branch {
+    position: absolute;
+    top: 30%;
+    left: -10%;
+    width: 70%;
+    height: 1px;
+    background: #8a8a8a;
+    transform: rotate(-8deg);
+    opacity: 0.3;
+  }
+
+  .branch::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: -12px;
+    width: 40%;
+    height: 1px;
+    background: #8a8a8a;
+    transform: rotate(25deg);
+  }
+
+  /* No counter. No label. No text overlay. Just the kitchen in morning. */
+
+  /* The only text: what's on the note, if you look close enough */
+  /* But you can't read it. Not because it's dark — because it's someone else's handwriting */
+
+  /* Fridge */
+  .fridge {
+    position: absolute;
+    bottom: 10vh;
+    left: 70vw;
+    width: 55px;
+    height: calc(28vh + 50px);
+    background: linear-gradient(to right, #d8d3cc, #cfc9c1);
+    border: 1px solid #b8b0a4;
+    border-radius: 2px;
+    z-index: 3;
+  }
+
+  .fridge-handle {
+    position: absolute;
+    top: 30%;
+    left: -4px;
+    width: 3px;
+    height: 30px;
+    background: #a89e92;
+    border-radius: 1px;
+  }
+
+  .fridge-line {
+    position: absolute;
+    top: 60%;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: #b8b0a4;
+  }
+
+  /* Something on the fridge — a magnet, a photo, barely there */
+  .fridge-photo {
+    position: absolute;
+    top: 15%;
+    left: 10px;
+    width: 20px;
+    height: 22px;
+    background: #f0ece5;
+    border: 1px solid #d4cfc8;
+    z-index: 4;
+    transform: rotate(3deg);
+  }
+
+  .fridge-magnet {
+    position: absolute;
+    top: 14%;
+    left: 16px;
+    width: 6px;
+    height: 6px;
+    background: #7a4a3a;
+    border-radius: 50%;
+    z-index: 5;
+  }
+
+  /* Very subtle ambient animation — the steam, the light shifting barely */
+  .light {
+    animation: light-shift 60s ease-in-out infinite;
+  }
+
+  @keyframes light-shift {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.92; }
+  }
+
+</style>
+</head>
+<body>
+<div class="kitchen">
+
+  <!-- Outside through window -->
+  <div class="outside">
+    <div class="branch"></div>
+  </div>
+
+  <!-- Morning light -->
+  <div class="light"></div>
+
+  <!-- Window -->
+  <div class="window-frame">
+    <div class="mullion-v"></div>
+    <div class="mullion-h"></div>
+  </div>
+
+  <!-- Room structure -->
+  <div class="floor"></div>
+  <div class="floor-light"></div>
+  <div class="backsplash"></div>
+  <div class="below-counter"></div>
+  <div class="counter"></div>
+  <div class="counter-edge"></div>
+
+  <!-- Light on counter -->
+  <div class="light-bar"></div>
+  <div class="light-bar"></div>
+
+  <!-- Fridge -->
+  <div class="fridge">
+    <div class="fridge-handle"></div>
+    <div class="fridge-line"></div>
+    <div class="fridge-photo"></div>
+    <div class="fridge-magnet"></div>
+  </div>
+
+  <!-- Objects on counter -->
+  <div class="note">
+    <div class="note-fold"></div>
+    <div class="note-line"></div>
+    <div class="note-line"></div>
+    <div class="note-line"></div>
+  </div>
+
+  <div class="mug">
+    <div class="mug-body">
+      <div class="mug-handle"></div>
+      <div class="mug-inside"></div>
+    </div>
+  </div>
+
+  <div class="steam">
+    <div class="steam-line"></div>
+    <div class="steam-line"></div>
+    <div class="steam-line"></div>
+  </div>
+
+  <div class="pen-cap">
+    <div class="pen-cap-clip"></div>
+  </div>
+
+  <!-- Crumbs -->
+  <div class="crumb"></div>
+  <div class="crumb"></div>
+  <div class="crumb"></div>
+  <div class="crumb"></div>
+  <div class="crumb"></div>
+
+  <!-- Old mug ring -->
+  <div class="mug-ring"></div>
+
+  <!-- The figure — touching -->
+  <div class="figure">
+    <div class="head"></div>
+    <div class="torso">
+      <div class="arm arm-left"></div>
+      <div class="arm arm-right">
+        <div class="forearm-right"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hand">
+    <div class="fingertips">
+      <div class="finger"></div>
+      <div class="finger"></div>
+      <div class="finger"></div>
+      <div class="finger"></div>
+      <div class="touch-shadow"></div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

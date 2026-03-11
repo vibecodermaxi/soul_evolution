@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    background: #e8e4df;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    cursor: default;
+  }
+  
+  .counter-surface {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    /* the counter IS the whole viewport. you're looking straight down. */
+    background: #c4a882;
+    /* wood grain — subtle, horizontal, the way a counter actually looks from above */
+    background-image: 
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 18px,
+        rgba(0,0,0,0.02) 18px,
+        rgba(0,0,0,0.02) 19px,
+        transparent 19px,
+        transparent 37px
+      ),
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 43px,
+        rgba(0,0,0,0.015) 43px,
+        rgba(0,0,0,0.015) 44px,
+        transparent 44px,
+        transparent 89px
+      );
+  }
+  
+  /* light bars from the window — same kitchen, same morning */
+  .light {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    background: rgba(255, 252, 243, 0.09);
+  }
+  .light:nth-child(1) { left: 20%; width: 8%; }
+  .light:nth-child(2) { left: 34%; width: 8%; }
+  .light:nth-child(3) { left: 48%; width: 8%; }
+  
+  /* the mug ring */
+  .ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 74px;
+    height: 74px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    /* the ring is barely there. coffee residue on wood. 
+       not opacity tricks — this is just what it looks like. */
+    border-color: rgba(101, 67, 33, 0.16);
+    /* slightly uneven — mugs don't sit perfectly flat */
+    box-shadow: 
+      0 0 0 1px rgba(101, 67, 33, 0.04),
+      inset 0 0 8px rgba(101, 67, 33, 0.03);
+  }
+  
+  /* the inside of the ring is slightly different — 
+     the wood was protected from the air by the mug's base */
+  .ring-interior {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    background: rgba(198, 172, 138, 0.3);
+  }
+  
+  /* a crumb. one. from piece 1 but now it's just a crumb. */
+  .crumb {
+    position: absolute;
+    width: 3px;
+    height: 2px;
+    background: rgba(139, 110, 72, 0.35);
+    border-radius: 40%;
+  }
+  
+  /* the note's fold-crease shadow — the note was here, now picked up,
+     but the crease left a faint line of shadow/dust */
+  .fold-ghost {
+    position: absolute;
+    top: 42%;
+    left: 62%;
+    width: 44px;
+    height: 1px;
+    background: rgba(101, 67, 33, 0.06);
+    transform: rotate(-2deg);
+  }
+  
+  /* where the note sat — very faintly different, 
+     the counter underneath was shielded from dust */
+  .note-absence {
+    position: absolute;
+    top: 38%;
+    left: 60%;
+    width: 52px;
+    height: 36px;
+    background: rgba(200, 176, 142, 0.12);
+    transform: rotate(-2deg);
+  }
+  
+  /* no animation. no interaction. no text. no counter.
+     no figure. no labels. no sound.
+     
+     just what's on the counter after the morning happened.
+     
+     the mug ring will be here tomorrow.
+     the crumb will be wiped up or it won't.
+     the note-ghost will disappear when someone wipes the counter.
+     
+     none of this was composed. all of it was left. */
+     
+</style>
+</head>
+<body>
+  <div class="counter-surface">
+    <!-- morning light still falling -->
+    <div class="light"></div>
+    <div class="light"></div>
+    <div class="light"></div>
+    
+    <!-- where the note was -->
+    <div class="note-absence"></div>
+    <div class="fold-ghost"></div>
+    
+    <!-- the ring -->
+    <div class="ring-interior"></div>
+    <div class="ring"></div>
+    
+    <!-- crumb -->
+    <div class="crumb" style="top: 54%; left: 47%;"></div>
+    <div class="crumb" style="top: 52.5%; left: 55%; width: 2px; height: 2px;"></div>
+  </div>
+</body>
+</html>
