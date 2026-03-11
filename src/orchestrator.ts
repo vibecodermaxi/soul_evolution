@@ -6,7 +6,7 @@ import { readFileContent, writeFileContent, writeBinaryContent, listDirectories 
 import { log } from "./utils/logger.js";
 import { extractTag, extractTagWithAttr, slugify } from "./utils/parser.js";
 import { buildSite } from "./site-builder.js";
-import { draftArtPiece, draftReflection } from "./typefully.js";
+import { draftReflectionSummary } from "./typefully.js";
 import { uploadToCloudinary } from "./cloudinary.js";
 
 // ---------------------------------------------------------------------------
@@ -421,9 +421,6 @@ async function runDay(
     const piece = await phaseCreate(config, soul, dayDir, i, numPieces);
     pieces.push(piece);
 
-    // Draft art piece to Typefully
-    await draftArtPiece(piece, dayNumber);
-
     if (i < numPieces && intervalSeconds > 0) {
       log.info(`  ⏳ waiting ${intervalSeconds}s before next piece...`);
       await sleep(intervalSeconds);
@@ -433,8 +430,8 @@ async function runDay(
   // Phase 3: Reflect
   const reflection = await phaseReflect(config, soul, dayDir, dayNumber, pieces);
 
-  // Draft reflection to Typefully
-  await draftReflection(reflection, dayNumber);
+  // Draft tweetable summary of reflection to Typefully
+  await draftReflectionSummary(reflection, dayNumber);
 
   // Phase 4: Mutate
   const newSoul = await phaseMutate(

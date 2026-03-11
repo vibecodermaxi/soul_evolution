@@ -1,5 +1,5 @@
+import OpenAI from "openai";
 import { log } from "./utils/logger.js";
-import type { ArtPiece } from "./types.js";
 
 const TYPEFULLY_API = "https://api.typefully.com/v2";
 
@@ -47,53 +47,47 @@ async function createDraft(
   }
 }
 
-// Formats that can be meaningfully posted as text on Twitter
-const TWEETABLE_FORMATS = new Set(["poem", "prose", "ascii", "code", "music", "text", "image"]);
-
-/**
- * Create a Typefully draft for an art piece.
- * Includes title, breadcrumb, and artwork content for tweetable formats.
- * Skips SVG/HTML since they can't render on Twitter.
- */
-export async function draftArtPiece(
-  piece: ArtPiece,
+async function summarizeForTwitter(
+  reflection: string,
   dayNumber: number
-): Promise<void> {
-  const config = getTypefullyConfig();
-  if (!config) {
-    log.info("Typefully not configured — skipping art draft");
-    return;
-  }
+): Promise<string> {
+  const client = new OpenAI({
+    baseURL: "https://openrouter.ai/api/v1",
+    apiKey: process.env.OPENROUTER_API_KEY,
+  });
 
-  if (!TWEETABLE_FORMATS.has(piece.format)) {
-    log.info(`  skipping Typefully draft for ${piece.format} piece (not tweetable)`);
-    return;
-  }
+  const systemPrompt = `You are summarizing a daily reflection from an autonomous AI art experiment called "diary of a soul." The reflection is written by a creative entity that makes art and reflects on its own evolution.
 
-  const dayLabel = `Day ${String(dayNumber).padStart(3, "0")}`;
+Your job: turn the reflection into a relatively short post for Twitter. Rules:
+- Keep it concise — a few sentences, not paragraphs. Respect the brevity of the platform.
+- Capture the most interesting or surprising insight from the reflection
+- Write in first person (you are the entity)
+- Be direct and plain — no hashtags, no emojis, no "thread" language
+- Don't explain the project — just share the insight as if continuing a conversation
+- It's okay to be cryptic or poetic, but prefer clarity over cleverness
+- Include "Day ${dayNumber}" naturally (e.g. "Day ${dayNumber}:" or "day ${dayNumber} —")
 
-  const parts: string[] = [`${dayLabel} — "${piece.title}"`];
+Return ONLY the tweet text, nothing else.`;
 
-  if (piece.format === "image" && piece.imageUrl) {
-    parts.push(piece.imageUrl);
-  }
+  log.info("  summarizing reflection for Twitter...");
 
-  if (piece.breadcrumb.trim()) {
-    parts.push(piece.breadcrumb.trim());
-  }
+  const completion = await client.chat.completions.create({
+    model: "anthropic/claude-sonnet-4",
+    max_tokens: 200,
+    temperature: 0.7,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: reflection },
+    ],
+  });
 
-  const text = parts.join("\n\n");
-
-  log.info(`  drafting art piece to Typefully (${text.length} chars)...`);
-  const ok = await createDraft(config.apiKey, config.socialSetId, [{ text }]);
-  if (ok) log.info(`  → art draft created: "${piece.title}"`);
+  return (completion.choices[0]?.message?.content ?? "").trim();
 }
 
 /**
- * Create a Typefully draft for the daily reflection.
- * Full reflection as a single long-form post.
+ * Summarize the daily reflection into a tweetable post and draft it to Typefully.
  */
-export async function draftReflection(
+export async function draftReflectionSummary(
   reflection: string,
   dayNumber: number
 ): Promise<void> {
@@ -103,10 +97,13 @@ export async function draftReflection(
     return;
   }
 
-  const dayLabel = `Day ${String(dayNumber).padStart(3, "0")}`;
-  const text = `${dayLabel} — Reflection\n\n${reflection.trim()}`;
+  const tweet = await summarizeForTwitter(reflection, dayNumber);
+  if (!tweet) {
+    log.warning("  empty summary returned — skipping Typefully draft");
+    return;
+  }
 
-  log.info(`  drafting reflection to Typefully (${text.length} chars)...`);
-  const ok = await createDraft(config.apiKey, config.socialSetId, [{ text }]);
-  if (ok) log.info("  → reflection draft created");
+  log.info(`  tweet summary (${tweet.length} chars): ${tweet}`);
+  const ok = await createDraft(config.apiKey, config.socialSetId, [{ text: tweet }]);
+  if (ok) log.info("  → reflection summary draft created");
 }
