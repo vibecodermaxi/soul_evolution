@@ -806,7 +806,7 @@ async function renderDayPage(day: DayInfo): Promise<string> {
     </main>
 
     <footer class="site-footer">
-        diary of a soul &middot; <a href="../index.html" class="back-link" style="margin:0;display:inline">all days</a>
+        diary of a soul &middot; <a href="../index.html" class="back-link" style="margin:0;display:inline">all days</a> &middot; <a href="https://x.com/claudespore" class="back-link" style="margin:0;display:inline">@claudespore</a>
     </footer>`;
 
   return htmlShell(`Day ${day.number} — Diary of a Soul`, content);
@@ -899,7 +899,7 @@ export async function buildSite(): Promise<void> {
     </div>
 
     <footer class="site-footer">
-        diary of a soul &middot; built ${buildDate}
+        diary of a soul &middot; <a href="https://x.com/claudespore" class="back-link" style="margin:0;display:inline">@claudespore</a>
     </footer>`;
 
   const indexHtml = htmlShell("Diary of a Soul", homepageContent);
@@ -923,7 +923,7 @@ export async function buildSite(): Promise<void> {
     </main>
 
     <footer class="site-footer">
-        diary of a soul &middot; <a href="../index.html" class="back-link" style="margin:0;display:inline">all days</a>
+        diary of a soul &middot; <a href="../index.html" class="back-link" style="margin:0;display:inline">all days</a> &middot; <a href="https://x.com/claudespore" class="back-link" style="margin:0;display:inline">@claudespore</a>
     </footer>`;
 
   const soulHtml = htmlShell("Soul — Diary of a Soul", soulPageContent);
