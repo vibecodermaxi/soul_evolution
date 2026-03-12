@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #e8e4df;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+  }
+
+  .kitchen {
+    position: relative;
+    width: 600px;
+    height: 500px;
+  }
+
+  /* The counter surface — solid, visible, plain light */
+  .counter {
+    position: absolute;
+    bottom: 120px;
+    left: 40px;
+    right: 40px;
+    height: 8px;
+    background: #8b7e6f;
+    border-radius: 1px;
+  }
+
+  .counter-shadow {
+    position: absolute;
+    bottom: 112px;
+    left: 42px;
+    right: 38px;
+    height: 3px;
+    background: rgba(60, 50, 40, 0.08);
+  }
+
+  /* The faucet — still here from morning */
+  .faucet-stem {
+    position: absolute;
+    bottom: 128px;
+    left: 180px;
+    width: 4px;
+    height: 48px;
+    background: #a09080;
+    border-radius: 2px;
+  }
+
+  .faucet-spout {
+    position: absolute;
+    bottom: 168px;
+    left: 180px;
+    width: 28px;
+    height: 4px;
+    background: #a09080;
+    border-radius: 2px;
+  }
+
+  /* The drip — every four seconds */
+  .drip {
+    position: absolute;
+    left: 205px;
+    bottom: 162px;
+    width: 3px;
+    height: 0px;
+    background: rgba(120, 140, 160, 0.5);
+    border-radius: 50%;
+    animation: drip 4s ease-in infinite;
+  }
+
+  @keyframes drip {
+    0% { height: 0; bottom: 164px; opacity: 0; }
+    8% { height: 4px; bottom: 163px; opacity: 0.6; }
+    15% { height: 5px; bottom: 158px; opacity: 0.5; }
+    30% { height: 4px; bottom: 145px; opacity: 0.4; }
+    50% { height: 3px; bottom: 132px; opacity: 0.3; }
+    60% { height: 2px; bottom: 128px; opacity: 0; }
+    100% { height: 0; bottom: 128px; opacity: 0; }
+  }
+
+  /* The hand — entering from the right side */
+  .hand {
+    position: absolute;
+    bottom: 128px;
+    right: 80px;
+    width: 0;
+    height: 0;
+    opacity: 0;
+  }
+
+  /* Hand built from simple shapes — not symbolic, just a hand */
+  .palm {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 32px;
+    height: 20px;
+    background: #c4a882;
+    border-radius: 4px 4px 3px 3px;
+  }
+
+  .thumb {
+    position: absolute;
+    bottom: 14px;
+    right: 28px;
+    width: 8px;
+    height: 14px;
+    background: #c4a882;
+    border-radius: 3px 3px 1px 1px;
+    transform: rotate(-15deg);
+  }
+
+  .fingers {
+    position: absolute;
+    bottom: 18px;
+    right: 0;
+    width: 30px;
+    height: 14px;
+    background: #c4a882;
+    border-radius: 3px 3px 1px 1px;
+  }
+
+  .finger-lines {
+    position: absolute;
+    bottom: 24px;
+    right: 8px;
+    width: 16px;
+    height: 1px;
+    background: rgba(80, 60, 40, 0.12);
+  }
+
+  .finger-lines::after {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: 2px;
+    width: 12px;
+    height: 1px;
+    background: rgba(80, 60, 40, 0.1);
+  }
+
+  .wrist {
+    position: absolute;
+    bottom: -6px;
+    right: -4px;
+    width: 20px;
+    height: 10px;
+    background: #c4a882;
+    border-radius: 2px;
+  }
+
+  /* The gap — the space between hand and counter */
+  .gap-indicator {
+    position: absolute;
+    bottom: 128px;
+    right: 86px;
+    font-size: 10px;
+    color: rgba(80, 60, 40, 0);
+    letter-spacing: 0.5px;
+    font-style: italic;
+    pointer-events: none;
+    transition: color 3s ease;
+  }
+
+  /* Timer text — almost invisible until the end */
+  .timer {
+    position: absolute;
+    bottom: 50px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 13px;
+    color: rgba(80, 60, 40, 0);
+    letter-spacing: 1px;
+    transition: color 2s ease;
+  }
+
+  /* The moment of contact */
+  .contact-line {
+    position: absolute;
+    bottom: 128px;
+    right: 88px;
+    width: 0;
+    height: 1px;
+    background: rgba(160, 130, 100, 0);
+    transition: all 0.5s ease;
+  }
+
+  /* After touch — warmth spreading on counter */
+  .warmth {
+    position: absolute;
+    bottom: 122px;
+    right: 75px;
+    width: 0;
+    height: 0;
+    background: radial-gradient(ellipse, rgba(195, 168, 130, 0.15), transparent);
+    border-radius: 50%;
+    transition: all 8s ease;
+    pointer-events: none;
+  }
+
+</style>
+</head>
+<body>
+<div class="kitchen">
+  <div class="counter"></div>
+  <div class="counter-shadow"></div>
+
+  <div class="faucet-stem"></div>
+  <div class="faucet-spout"></div>
+  <div class="drip"></div>
+
+  <div class="hand" id="hand">
+    <div class="wrist"></div>
+    <div class="palm"></div>
+    <div class="thumb"></div>
+    <div class="fingers"></div>
+    <div class="finger-lines"></div>
+  </div>
+
+  <div class="gap-indicator" id="gap"></div>
+  <div class="timer" id="timer"></div>
+  <div class="contact-line" id="contact"></div>
+  <div class="warmth" id="warmth"></div>
+</div>
+
+<script>
+  const hand = document.getElementById('hand');
+  const gap = document.getElementById('gap');
+  const timer = document.getElementById('timer');
+  const contact = document.getElementById('contact');
+  const warmth = document.getElementById('warmth');
+
+  // forty seconds. That's how long the hot water takes.
+  // That's how long this takes.
+
+  let startTime = null;
+  let touched = false;
+  let phase = 'waiting'; // waiting, approaching, hovering, touching, after
+
+  // The hand appears after a few seconds
+  setTimeout(() => {
+    phase = 'approaching';
+    hand.style.transition = 'opacity 3s ease, bottom 15s ease';
+    hand.style.opacity = '1';
+    hand.style.width = 'auto';
+    hand.style.height = 'auto';
+    startTime = Date.now();
+  }, 2000);
+
+  function getSeconds() {
+    if (!startTime) return 0;
+    return (Date.now() - startTime) / 1000;
+  }
+
+  function updateGap(distance) {
+    if (distance > 12) {
+      gap.textContent = '';
+    } else if (distance > 6) {
+      gap.textContent = '';
+      gap.style.color = 'rgba(80, 60, 40, 0)';
+    } else if (distance > 2) {
+      gap.style.color = 'rgba(80, 60, 40, 0.15)';
+      gap.textContent = Math.round(distance) + 'mm';
+    } else if (distance > 0) {
+      gap.style.color = 'rgba(80, 60, 40, 0.25)';
+      gap.textContent = '1mm';
+    }
+  }
+
+  function doTouch() {
+    if (touched) return;
+    touched = true;
+    phase = 'touching';
+
+    // gap text changes
+    gap.style.transition = 'color 1s ease';
+    gap.style.color = 'rgba(80, 60, 40, 0.3)';
+    gap.textContent = '';
+
+    // contact — a thin warm line where hand meets surface
+    contact.style.width = '28px';
+    contact.style.background = 'rgba(180, 150, 120, 0.3)';
+    contact.style.height = '1px';
+
+    // warmth spreads slowly from the point of contact
+    setTimeout(() => {
+      warmth.style.width = '80px';
+      warmth.style.height = '30px';
+    }, 500);
+
+    setTimeout(() => {
+      warmth.style.width = '140px';
+      warmth.style.height = '50px';
+    }, 4000);
+
+    // the timer appears — how long since the hand started moving
+    setTimeout(() => {
+      timer.style.color = 'rgba(80, 60, 40, 0.2)';
+    }, 2000);
+  }
+
+  // Main animation loop
+  function animate() {
+    const s = getSeconds();
+
+    if (phase === 'approaching') {
+      // Hand descends slowly toward the counter over ~38 seconds
+      // starts at bottom: 175px, counter is at bottom: 128px
+      // contact at bottom: 128px (hand bottom touching counter top)
+      const startBottom = 175;
+      const endBottom = 128;
+      const duration = 38; // seconds — leaves 2 seconds of the forty for contact
+
+      const progress = Math.min(s / duration, 1);
+
+      // ease: slow at first, slower near the end
+      const eased = 1 - Math.pow(1 - progress, 2.5);
+      const currentBottom = startBottom - (startBottom - endBottom) * eased;
+
+      hand.style.bottom = currentBottom + 'px';
+
+      // The distance in "millimeters" — mapped from pixel distance
+      const pixelDistance = currentBottom - endBottom;
+      const mmDistance = pixelDistance * 0.5; // rough mapping
+      updateGap(mmDistance);
+
+      // Update timer
+      const displaySeconds = Math.floor(s);
+      if (displaySeconds > 5 && displaySeconds <= 40) {
+        timer.style.color = 'rgba(80, 60, 40, 0.08)';
+        timer.textContent = displaySeconds + 's';
+      }
+
+      // At ~38 seconds, contact
+      if (s >= 38 && !touched) {
+        hand.style.bottom = endBottom + 'px';
+        doTouch();
+        timer.textContent = '40s';
+        setTimeout(() => {
+          timer.style.color = 'rgba(80, 60, 40, 0.18)';
+          timer.textContent = 'forty seconds';
+        }, 3000);
+      }
+    }
+
+    if (phase === 'touching') {
+      // After touch: very slight settling
+      // Nothing else changes. The hand is on the counter.
+      // The warmth spreads. The drip continues.
+      // The kitchen continues.
+    }
+
+    requestAnimationFrame(animate);
+  }
+
+  requestAnimationFrame(animate);
+</script>
+</body>
+</html>
