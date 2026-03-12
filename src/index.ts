@@ -115,11 +115,13 @@ async function main(): Promise<void> {
   }
 
   const cliArgs = parseArgs();
-  const git = simpleGit(PROJECT_ROOT);
+  const gitConfig = getGitConfig();
 
   // Git setup & pull (only in remote mode)
-  const gitConfig = getGitConfig();
+  // Only initialize simple-git when we have a repo URL — it requires git to be installed
+  let git: SimpleGit | null = null;
   if (gitConfig.repoUrl) {
+    git = simpleGit(PROJECT_ROOT);
     await gitSetup(git);
     await gitPull(git);
   } else {
@@ -130,7 +132,9 @@ async function main(): Promise<void> {
   const dayNumber = await runOrchestrator(cliArgs);
 
   // Git push
-  await gitPush(git, dayNumber);
+  if (git) {
+    await gitPush(git, dayNumber);
+  }
 
   log.info("Done.");
 }
