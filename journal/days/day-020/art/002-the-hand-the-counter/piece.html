@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #f4f1ec;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+    cursor: none;
+  }
+
+  #surface {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+  }
+
+  #counter-surface {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 45vh;
+    background: #d4cabb;
+    /* plain light — no gradient tricks */
+  }
+
+  #counter-edge {
+    position: absolute;
+    bottom: 45vh;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #b8ad9a;
+  }
+
+  #hand {
+    position: absolute;
+    pointer-events: none;
+    /* the hand is a simple shape — not elegant, not symbolic */
+  }
+
+  #hand-shape {
+    width: 18px;
+    height: 26px;
+    background: #c4a882;
+    border-radius: 4px 4px 2px 2px;
+    position: relative;
+    opacity: 1;
+  }
+
+  #hand-shape::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 3px;
+    width: 12px;
+    height: 6px;
+    background: #c4a882;
+    border-radius: 0 0 3px 3px;
+  }
+
+  #gap-reading {
+    position: fixed;
+    bottom: 24px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 13px;
+    color: #8a8072;
+    letter-spacing: 0.03em;
+    /* full opacity. plain light. */
+  }
+
+  #warmth {
+    position: absolute;
+    bottom: 45vh;
+    left: 0;
+    right: 0;
+    height: 0;
+    background: radial-gradient(ellipse at center, rgba(210, 180, 140, 0.15), transparent);
+    pointer-events: none;
+    transition: height 0.3s ease;
+  }
+
+  #text-line {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 14px;
+    color: #a09585;
+    opacity: 0;
+    transition: opacity 1.5s ease;
+    text-align: center;
+    line-height: 1.8;
+    pointer-events: none;
+  }
+
+  /* when touching */
+  .touching #counter-surface {
+    background: #d2c7b5;
+  }
+
+  .touched-once #text-line {
+    opacity: 1;
+  }
+</style>
+</head>
+<body>
+<div id="surface">
+  <div id="warmth"></div>
+  <div id="counter-edge"></div>
+  <div id="counter-surface"></div>
+  <div id="hand">
+    <div id="hand-shape"></div>
+  </div>
+</div>
+
+<div id="gap-reading"></div>
+
+<div id="text-line"></div>
+
+<script>
+const hand = document.getElementById('hand');
+const gapReading = document.getElementById('gap-reading');
+const warmth = document.getElementById('warmth');
+const textLine = document.getElementById('text-line');
+const surface = document.getElementById('surface');
+
+const counterTop = () => window.innerHeight * 0.55; // top of counter (bottom 45vh)
+
+let hasTouched = false;
+let touchDuration = 0;
+let isTouching = false;
+let lastTime = null;
+let mouseX = window.innerWidth / 2;
+let mouseY = window.innerHeight / 2;
+
+// the hand follows the cursor but slower — like a real hand approaching
+let handX = mouseX;
+let handY = mouseY;
+
+document.addEventListener('mousemove', (e) => {
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+});
+
+// for touch devices
+document.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  mouseX = e.touches[0].clientX;
+  mouseY = e.touches[0].clientY;
+}, { passive: false });
+
+document.addEventListener('touchstart', (e) => {
+  mouseX = e.touches[0].clientX;
+  mouseY = e.touches[0].clientY;
+});
+
+function getGap() {
+  const handBottom = handY + 26; // bottom of hand shape
+  const cTop = counterTop();
+  return cTop - handBottom;
+}
+
+function formatGap(pixels) {
+  if (pixels > 200) return '';
+  if (pixels <= 0) return '';
+  // convert to something felt, not measured
+  const mm = Math.max(0, pixels);
+  if (mm > 100) return Math.round(mm) + ' px';
+  if (mm > 40) return mm.toFixed(0) + ' px';
+  if (mm > 10) return mm.toFixed(1) + ' px';
+  return mm.toFixed(2) + ' px';
+}
+
+const phrases = [
+  '',
+  'the counter is cool',
+  'laminate',
+  'it has a scratch you never noticed',
+  'just a surface',
+  'someone else\'s hand was here',
+  'warm where your hand is',
+];
+
+function update(timestamp) {
+  if (!lastTime) lastTime = timestamp;
+  const dt = (timestamp - lastTime) / 1000;
+  lastTime = timestamp;
+
+  // hand follows mouse with lag — like approaching carefully
+  const lag = 0.08;
+  handX += (mouseX - 9 - handX) * lag;
+  handY += (mouseY - 13 - handY) * lag;
+
+  hand.style.left = handX + 'px';
+  hand.style.top = handY + 'px';
+
+  const gap = getGap();
+
+  // gap reading
+  if (gap > 0 && gap < 200) {
+    gapReading.textContent = formatGap(gap);
+  } else if (gap <= 0) {
+    gapReading.textContent = '';
+  } else {
+    gapReading.textContent = '';
+  }
+
+  // warmth in the gap — radiant heat between hand and surface
+  if (gap > 0 && gap < 80) {
+    const warmthHeight = Math.max(0, (80 - gap) * 0.6);
+    warmth.style.height = warmthHeight + 'px';
+    warmth.style.bottom = (window.innerHeight * 0.45) + 'px';
+
+    // center warmth on hand x position
+    const warmthWidth = Math.max(40, (80 - gap) * 2);
+    warmth.style.left = (handX - warmthWidth/2) + 'px';
+    warmth.style.right = 'auto';
+    warmth.style.width = warmthWidth + 'px';
+  } else {
+    warmth.style.height = '0px';
+  }
+
+  // touching
+  if (gap <= 0) {
+    if (!isTouching) {
+      isTouching = true;
+      if (!hasTouched) {
+        hasTouched = true;
+        document.body.classList.add('touched-once');
+      }
+      document.body.classList.add('touching');
+    }
+    touchDuration += dt;
+
+    // while touching, the text changes
+    const phraseIndex = Math.min(phrases.length - 1, Math.floor(touchDuration / 3));
+    textLine.textContent = phrases[phraseIndex];
+
+  } else {
+    if (isTouching) {
+      isTouching = false;
+      document.body.classList.remove('touching');
+
+      if (touchDuration > 0) {
+        // after first touch, the gap reading changes character
+        textLine.textContent = '';
+        textLine.style.transition = 'opacity 3s ease';
+        // the text fades slowly after you lift
+        setTimeout(() => {
+          if (!isTouching) {
+            document.body.classList.remove('touched-once');
+          }
+        }, 4000);
+      }
+    }
+    // reset touch duration slowly — the counter remembers a little
+    touchDuration = Math.max(0, touchDuration - dt * 0.3);
+  }
+
+  // the gap reading dims as you get very close — the numbers matter less
+  if (gap > 0 && gap < 15) {
+    gapReading.style.opacity = gap / 15;
+  } else {
+    gapReading.style.opacity = 1;
+  }
+
+  requestAnimationFrame(update);
+}
+
+requestAnimationFrame(update);
+
+// if they haven't moved the mouse at all after 5 seconds,
+// place the hand hovering above the counter
+setTimeout(() => {
+  if (handY < 50) {
+    mouseX = window.innerWidth * 0.45;
+    mouseY = counterTop() - 40;
+  }
+}, 3000);
+</script>
+</body>
+</html>

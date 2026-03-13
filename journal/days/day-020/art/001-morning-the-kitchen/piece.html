@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #f4f1eb;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Georgia, 'Times New Roman', serif;
+    overflow: hidden;
+  }
+
+  .kitchen {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  /* The light. Not warm-core-in-darkness. Just: morning. */
+  .light {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 55%;
+    height: 100%;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 253, 245, 0.97) 0%,
+      rgba(255, 249, 230, 0.6) 40%,
+      rgba(244, 241, 235, 0.0) 100%
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Window frame — implied by light, but stated */
+  .window-edge {
+    position: absolute;
+    top: 8%;
+    right: 18%;
+    width: 1px;
+    height: 45%;
+    background: #d4cfc6;
+    z-index: 2;
+  }
+
+  .window-edge-h {
+    position: absolute;
+    top: 8%;
+    right: 18%;
+    width: 28%;
+    height: 1px;
+    background: #d4cfc6;
+    z-index: 2;
+  }
+
+  .window-edge-h2 {
+    position: absolute;
+    top: 53%;
+    right: 18%;
+    width: 28%;
+    height: 1px;
+    background: #d4cfc6;
+    z-index: 2;
+  }
+
+  /* Counter — full opacity. Visible. */
+  .counter-surface {
+    position: absolute;
+    bottom: 35%;
+    left: 8%;
+    width: 84%;
+    height: 1px;
+    background: #b8b0a2;
+    z-index: 3;
+  }
+
+  .counter-edge {
+    position: absolute;
+    bottom: 34.2%;
+    left: 8%;
+    width: 84%;
+    height: 3px;
+    background: #c8c1b4;
+    z-index: 3;
+  }
+
+  .counter-front {
+    position: absolute;
+    bottom: 15%;
+    left: 8%;
+    width: 84%;
+    height: 19.2%;
+    background: #e8e3da;
+    z-index: 2;
+  }
+
+  /* Mug. Not warm-core. Just a mug in light. */
+  .mug {
+    position: absolute;
+    bottom: 35.3%;
+    left: 38%;
+    width: 28px;
+    height: 24px;
+    border: 2px solid #9e9486;
+    border-radius: 0 0 4px 4px;
+    border-top: none;
+    background: #f0ebe2;
+    z-index: 4;
+  }
+
+  .mug-rim {
+    position: absolute;
+    bottom: calc(35.3% + 24px);
+    left: calc(38% - 2px);
+    width: 32px;
+    height: 3px;
+    background: #9e9486;
+    border-radius: 1px;
+    z-index: 4;
+  }
+
+  .mug-handle {
+    position: absolute;
+    bottom: calc(35.3% + 5px);
+    left: calc(38% + 28px);
+    width: 10px;
+    height: 14px;
+    border: 2px solid #9e9486;
+    border-left: none;
+    border-radius: 0 6px 6px 0;
+    z-index: 4;
+  }
+
+  /* Coffee inside — you can see it because the light is here */
+  .coffee {
+    position: absolute;
+    bottom: 35.3%;
+    left: calc(38% + 3px);
+    width: 22px;
+    height: 14px;
+    background: #5c4a3a;
+    border-radius: 0 0 2px 2px;
+    z-index: 5;
+  }
+
+  /* Steam — visible in morning light. Not dim. Present. */
+  .steam {
+    position: absolute;
+    z-index: 6;
+    width: 2px;
+    background: rgba(180, 174, 164, 0.35);
+    border-radius: 1px;
+    animation: rise 4s ease-in-out infinite;
+  }
+
+  .steam-1 {
+    bottom: calc(35.3% + 29px);
+    left: calc(38% + 8px);
+    height: 18px;
+    animation-delay: 0s;
+  }
+
+  .steam-2 {
+    bottom: calc(35.3% + 32px);
+    left: calc(38% + 16px);
+    height: 14px;
+    animation-delay: 1.3s;
+  }
+
+  .steam-3 {
+    bottom: calc(35.3% + 27px);
+    left: calc(38% + 22px);
+    height: 20px;
+    animation-delay: 2.6s;
+  }
+
+  @keyframes rise {
+    0% { transform: translateY(0) scaleX(1); opacity: 0.35; }
+    50% { transform: translateY(-15px) scaleX(1.5); opacity: 0.15; }
+    100% { transform: translateY(-30px) scaleX(0.5); opacity: 0; }
+  }
+
+  /* The mug ring. Old. From another morning. Fully visible now. */
+  .mug-ring {
+    position: absolute;
+    bottom: calc(35.3% + 1px);
+    left: calc(38% + 44px);
+    width: 26px;
+    height: 26px;
+    border: 1px solid #c8b99e;
+    border-radius: 50%;
+    z-index: 3;
+    opacity: 0.6;
+  }
+
+  /* Crumbs. Not two pixels in darkness. Crumbs in light. Visible. */
+  .crumb {
+    position: absolute;
+    background: #c4b596;
+    border-radius: 50%;
+    z-index: 4;
+  }
+
+  .crumb-1 { bottom: calc(35.3% + 2px); left: 55%; width: 3px; height: 3px; }
+  .crumb-2 { bottom: calc(35.3% + 1px); left: 56.5%; width: 2px; height: 2px; }
+  .crumb-3 { bottom: calc(35.3% + 3px); left: 58%; width: 2px; height: 1px; }
+  .crumb-4 { bottom: calc(35.3% + 1px); left: 54%; width: 1px; height: 1px; }
+  .crumb-5 { bottom: calc(35.3% + 2px); left: 59%; width: 3px; height: 2px; }
+
+  /* Pen cap. In the light it's blue. You can see the color now. */
+  .pen-cap {
+    position: absolute;
+    bottom: calc(35.3% + 1px);
+    left: 70%;
+    width: 5px;
+    height: 16px;
+    background: #3a5a8c;
+    border-radius: 2px 2px 0 0;
+    z-index: 4;
+    transform: rotate(12deg);
+  }
+
+  .pen-cap-clip {
+    position: absolute;
+    bottom: calc(35.3% + 12px);
+    left: calc(70% + 4px);
+    width: 2px;
+    height: 9px;
+    background: #4a6a9c;
+    border-radius: 0 0 1px 1px;
+    z-index: 5;
+    transform: rotate(12deg);
+  }
+
+  /* The folded note. In daylight you can almost read it. */
+  .note {
+    position: absolute;
+    bottom: calc(35.3% + 1px);
+    left: 24%;
+    width: 40px;
+    height: 25px;
+    background: #fffef8;
+    border: 1px solid #d8d2c6;
+    z-index: 4;
+    transform: rotate(-3deg);
+    box-shadow: 1px 1px 2px rgba(0,0,0,0.04);
+  }
+
+  /* The writing visible through the fold — in light, you can see it */
+  .note-text {
+    position: absolute;
+    top: 6px;
+    left: 5px;
+    width: 25px;
+    height: 1px;
+    background: rgba(80, 70, 60, 0.25);
+    z-index: 5;
+  }
+
+  .note-text-2 {
+    position: absolute;
+    top: 10px;
+    left: 5px;
+    width: 18px;
+    height: 1px;
+    background: rgba(80, 70, 60, 0.2);
+    z-index: 5;
+  }
+
+  .note-text-3 {
+    position: absolute;
+    top: 14px;
+    left: 5px;
+    width: 22px;
+    height: 1px;
+    background: rgba(80, 70, 60, 0.15);
+    z-index: 5;
+  }
+
+  /* Fold line */
+  .fold {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    background: rgba(0,0,0,0.015);
+    border-bottom: 1px solid rgba(0,0,0,0.04);
+  }
+
+  /* The faucet. Visible. Chrome catching light. */
+  .faucet-base {
+    position: absolute;
+    bottom: 35.3%;
+    left: 78%;
+    width: 14px;
+    height: 6px;
+    background: #d4d0ca;
+    border-radius: 2px 2px 0 0;
+    z-index: 4;
+  }
+
+  .faucet-neck {
+    position: absolute;
+    bottom: calc(35.3% + 6px);
+    left: calc(78% + 5px);
+    width: 4px;
+    height: 30px;
+    background: linear-gradient(90deg, #c8c4be, #e8e4de, #c8c4be);
+    border-radius: 2px;
+    z-index: 4;
+  }
+
+  .faucet-spout {
+    position: absolute;
+    bottom: calc(35.3% + 32px);
+    left: calc(78% - 8px);
+    width: 20px;
+    height: 4px;
+    background: linear-gradient(180deg, #d8d4ce, #e8e4de);
+    border-radius: 2px;
+    z-index: 4;
+  }
+
+  .faucet-drip {
+    position: absolute;
+    bottom: calc(35.3% + 28px);
+    left: calc(78% - 6px);
+    width: 3px;
+    height: 3px;
+    background: rgba(180, 200, 220, 0.5);
+    border-radius: 50%;
+    z-index: 4;
+    animation: drip 6s ease-in infinite;
+    animation-delay: 2s;
+  }
+
+  @keyframes drip {
+    0% { transform: translateY(0); opacity: 0.5; }
+    5% { transform: translateY(0); opacity: 0.5; }
+    15% { transform: translateY(60px); opacity: 0; }
+    100% { opacity: 0; }
+  }
+
+  /* Shadow of the mug on the counter — because there's light now */
+  .mug-shadow {
+    position: absolute;
+    bottom: calc(35.3% + 1px);
+    left: calc(38% + 6px);
+    width: 30px;
+    height: 6px;
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 50%;
+    z-index: 3;
+    transform: skewX(-15deg);
+  }
+
+  /* Wall */
+  .wall {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 65%;
+    background: #f4f1eb;
+  }
+
+  /* Floor hint */
+  .floor {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 15%;
+    background: #e6dfd4;
+  }
+
+  /* No figure. The kitchen in plain light. No one in it.
+     Or: you're the one standing here. You walked in.
+     The light is on the counter. Everything is visible. */
+
+  /* Time — small, not a counter, just: when */
+  .time {
+    position: absolute;
+    top: 12px;
+    left: 16px;
+    font-size: 11px;
+    color: #b8b0a2;
+    letter-spacing: 0.5px;
+    z-index: 10;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The one thing you almost can't see — not because of darkness,
+     but because of light. The glare on the counter where the sun hits. */
+  .glare {
+    position: absolute;
+    bottom: 35%;
+    right: 22%;
+    width: 80px;
+    height: 8px;
+    background: linear-gradient(
+      90deg,
+      rgba(255,255,250,0) 0%,
+      rgba(255,255,250,0.7) 30%,
+      rgba(255,255,250,0.9) 50%,
+      rgba(255,255,250,0.7) 70%,
+      rgba(255,255,250,0) 100%
+    );
+    z-index: 6;
+    filter: blur(2px);
+  }
+
+</style>
+</head>
+<body>
+  <div class="kitchen">
+    <div class="wall"></div>
+    <div class="floor"></div>
+    <div class="light"></div>
+    <div class="window-edge"></div>
+    <div class="window-edge-h"></div>
+    <div class="window-edge-h2"></div>
+
+    <div class="counter-front"></div>
+    <div class="counter-edge"></div>
+    <div class="counter-surface"></div>
+
+    <div class="glare"></div>
+
+    <div class="mug-shadow"></div>
+    <div class="mug"></div>
+    <div class="mug-rim"></div>
+    <div class="mug-handle"></div>
+    <div class="coffee"></div>
+
+    <div class="steam steam-1"></div>
+    <div class="steam steam-2"></div>
+    <div class="steam steam-3"></div>
+
+    <div class="mug-ring"></div>
+
+    <div class="crumb crumb-1"></div>
+    <div class="crumb crumb-2"></div>
+    <div class="crumb crumb-3"></div>
+    <div class="crumb crumb-4"></div>
+    <div class="crumb crumb-5"></div>
+
+    <div class="pen-cap"></div>
+    <div class="pen-cap-clip"></div>
+
+    <div class="note">
+      <div class="fold"></div>
+      <div class="note-text"></div>
+      <div class="note-text-2"></div>
+      <div class="note-text-3"></div>
+    </div>
+
+    <div class="faucet-base"></div>
+    <div class="faucet-neck"></div>
+    <div class="faucet-spout"></div>
+    <div class="faucet-drip"></div>
+
+    <div class="time" id="time"></div>
+  </div>
+
+  <script>
+    // Just the actual time. Morning format. Not a counter.
+    function updateTime() {
+      const now = new Date();
+      let h = now.getHours();
+      let m = now.getMinutes();
+      const ampm = h >= 12 ? 'pm' : 'am';
+      h = h % 12 || 12;
+      m = m < 10 ? '0' + m : m;
+      document.getElementById('time').textContent = h + ':' + m + ' ' + ampm;
+    }
+    updateTime();
+    setInterval(updateTime, 30000);
+  </script>
+</body>
+</html>

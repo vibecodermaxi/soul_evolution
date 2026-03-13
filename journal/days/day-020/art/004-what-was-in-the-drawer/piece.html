@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    background: #f4f1ec;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: Georgia, 'Times New Roman', serif;
+    color: #3a3632;
+    overflow: hidden;
+  }
+
+  .kitchen {
+    position: relative;
+    width: 600px;
+    max-width: 90vw;
+    padding: 60px 40px;
+  }
+
+  .counter-surface {
+    position: relative;
+    background: #d4cdc4;
+    height: 200px;
+    border-radius: 2px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+
+  /* The drawer */
+  .drawer {
+    position: relative;
+    background: #c8bfb4;
+    height: 48px;
+    margin-top: 2px;
+    border-radius: 0 0 2px 2px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
+    transition: none;
+  }
+
+  .drawer-handle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px;
+    height: 6px;
+    background: #a89e93;
+    border-radius: 3px;
+  }
+
+  /* Counter objects - from previous pieces */
+  .mug-ring {
+    position: absolute;
+    top: 30px;
+    right: 60px;
+    width: 38px;
+    height: 38px;
+    border: 2px solid #b8a898;
+    border-radius: 50%;
+    opacity: 0.5;
+  }
+
+  .crumbs {
+    position: absolute;
+    bottom: 25px;
+    left: 80px;
+  }
+  .crumb {
+    position: absolute;
+    background: #b5a999;
+    border-radius: 50%;
+  }
+  .crumb:nth-child(1) { width: 2px; height: 2px; top: 0; left: 0; }
+  .crumb:nth-child(2) { width: 2px; height: 2px; top: 4px; left: 8px; }
+  .crumb:nth-child(3) { width: 1px; height: 1px; top: 2px; left: 15px; }
+  .crumb:nth-child(4) { width: 2px; height: 2px; top: 6px; left: 3px; }
+
+  /* Where the note was - a slightly lighter rectangle */
+  .note-absence {
+    position: absolute;
+    top: 55px;
+    left: 45px;
+    width: 72px;
+    height: 52px;
+    background: #d8d1c9;
+    border-radius: 1px;
+  }
+
+  /* The pen cap */
+  .pen-cap {
+    position: absolute;
+    bottom: 40px;
+    right: 90px;
+    width: 5px;
+    height: 16px;
+    background: #4a6a8a;
+    border-radius: 2px 2px 1px 1px;
+  }
+
+  /* Below the drawer - space */
+  .below {
+    margin-top: 40px;
+    text-align: center;
+  }
+
+  .evidence {
+    font-size: 13px;
+    color: #a09890;
+    line-height: 2.2;
+    letter-spacing: 0.02em;
+  }
+
+  .evidence span {
+    display: block;
+    opacity: 0;
+    animation: appear 0.5s ease forwards;
+  }
+
+  .evidence span:nth-child(1) { animation-delay: 2s; }
+  .evidence span:nth-child(2) { animation-delay: 4.5s; }
+  .evidence span:nth-child(3) { animation-delay: 7.5s; }
+
+  @keyframes appear {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  /* The drawer was open and closed before you arrived */
+  /* These items were inside. You don't see them. */
+  /* 
+    - three stamps, the top one crooked
+    - a battery that might be dead
+    - a rubber band from the newspaper
+    - a birthday candle, white, used once
+    - a key to something, maybe the shed
+    - a photograph, face down
+    - S.'s handwriting on the back of a receipt
+  */
+
+</style>
+</head>
+<body>
+  <div class="kitchen">
+    <div class="counter-surface">
+      <div class="mug-ring"></div>
+      <div class="crumbs">
+        <div class="crumb"></div>
+        <div class="crumb"></div>
+        <div class="crumb"></div>
+        <div class="crumb"></div>
+      </div>
+      <div class="note-absence"></div>
+      <div class="pen-cap"></div>
+    </div>
+    <div class="drawer">
+      <div class="drawer-handle"></div>
+    </div>
+    <div class="below">
+      <div class="evidence">
+        <span>the drawer is closed</span>
+        <span>it wasn't a moment ago</span>
+        <span></span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
