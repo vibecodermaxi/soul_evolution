@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>leaving the light on</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #d4cfc8;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: Georgia, 'Times New Roman', serif;
+    overflow: hidden;
+    cursor: default;
+  }
+
+  .kitchen {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  /* The objects from this morning, in plain light */
+  .object {
+    position: absolute;
+    opacity: 1;
+    transition: opacity 8s ease;
+  }
+
+  /* mug ring */
+  .mug-ring {
+    width: 38px;
+    height: 38px;
+    border: 2px solid #8b7e6a;
+    border-radius: 50%;
+    bottom: 38%;
+    right: 35%;
+  }
+
+  .mug-ring-old {
+    width: 36px;
+    height: 36px;
+    border: 1.5px solid #a89b87;
+    border-radius: 50%;
+    bottom: 38.5%;
+    right: 35.8%;
+  }
+
+  /* pen cap */
+  .pen-cap {
+    width: 4px;
+    height: 14px;
+    background: #2c2c2c;
+    border-radius: 2px 2px 0 0;
+    bottom: 39%;
+    right: 28%;
+    transform: rotate(12deg);
+  }
+
+  /* crumbs */
+  .crumb {
+    background: #b5a88e;
+    border-radius: 50%;
+    position: absolute;
+  }
+  .crumb-1 { width: 2px; height: 2px; bottom: 37%; right: 40%; }
+  .crumb-2 { width: 3px; height: 2px; bottom: 36.5%; right: 38%; }
+  .crumb-3 { width: 2px; height: 2px; bottom: 37.8%; right: 42%; }
+  .crumb-4 { width: 2px; height: 1px; bottom: 36.2%; right: 41%; }
+  .crumb-5 { width: 3px; height: 2px; bottom: 37.3%; right: 36%; }
+
+  /* folded note */
+  .note {
+    width: 32px;
+    height: 20px;
+    background: #f0ebe3;
+    border: 1px solid #c8c0b4;
+    bottom: 38%;
+    right: 22%;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  }
+  .note-fold {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    background: #ede8e0;
+    border-bottom: 1px solid #d5cec2;
+  }
+
+  /* counter edge */
+  .counter-edge {
+    position: absolute;
+    bottom: 35%;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: #9e9484;
+  }
+
+  /* faucet */
+  .faucet-base {
+    width: 8px;
+    height: 28px;
+    background: #a0a0a0;
+    border-radius: 2px;
+    bottom: 35%;
+    left: 18%;
+  }
+  .faucet-neck {
+    width: 20px;
+    height: 6px;
+    background: #a8a8a8;
+    border-radius: 3px 3px 0 0;
+    bottom: calc(35% + 28px);
+    left: calc(18% - 6px);
+  }
+
+  /* The figure — two pixels wide, standing */
+  .figure {
+    width: 2px;
+    height: 22px;
+    background: #4a4540;
+    position: absolute;
+    bottom: 35%;
+    left: 52%;
+    opacity: 1;
+    transition: opacity 12s ease;
+  }
+
+  /* The light source — overhead, warm */
+  .light-pool {
+    position: absolute;
+    top: 0;
+    left: 30%;
+    width: 40%;
+    height: 70%;
+    background: radial-gradient(ellipse at 50% 20%, rgba(255,248,230,0.15) 0%, transparent 70%);
+    pointer-events: none;
+    transition: opacity 8s ease;
+  }
+
+  /* The text */
+  .leaving-text {
+    position: absolute;
+    bottom: 12%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 14px;
+    color: #7a7265;
+    letter-spacing: 0.03em;
+    opacity: 0;
+    transition: opacity 6s ease;
+    white-space: nowrap;
+    text-align: center;
+    line-height: 1.8;
+  }
+
+  /* States */
+  body.someone-left .figure {
+    opacity: 0;
+  }
+
+  body.someone-left .light-pool {
+    opacity: 1;
+  }
+
+  body.someone-left .leaving-text {
+    opacity: 1;
+  }
+
+  /* After longer: the light stays on */
+  body.light-stays .leaving-text {
+    opacity: 0;
+  }
+
+  /* Night comes back — but the light stays on this time */
+  body.night-returns {
+    background: #2a2723;
+    transition: background 30s ease;
+  }
+
+  body.night-returns .object {
+    opacity: 0.7;
+  }
+
+  body.night-returns .counter-edge {
+    opacity: 0.5;
+  }
+
+  body.night-returns .crumb {
+    opacity: 0.4;
+  }
+
+  body.night-returns .light-pool {
+    opacity: 1;
+    background: radial-gradient(ellipse at 50% 20%, rgba(255,243,200,0.12) 0%, transparent 60%);
+  }
+
+  body.night-returns .faucet-base,
+  body.night-returns .faucet-neck {
+    opacity: 0.6;
+  }
+
+  /* The warm circle where the light fixture would be */
+  .fixture {
+    position: absolute;
+    top: 5%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #f5e6c8;
+    opacity: 0.9;
+    box-shadow: 0 0 20px 8px rgba(245, 230, 200, 0.15);
+    transition: box-shadow 30s ease;
+  }
+
+  body.night-returns .fixture {
+    box-shadow: 0 0 40px 15px rgba(245, 230, 200, 0.25);
+  }
+
+  /* Final text */
+  .final-text {
+    position: absolute;
+    bottom: 8%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 13px;
+    color: #8a8070;
+    opacity: 0;
+    transition: opacity 10s ease;
+    text-align: center;
+    line-height: 2;
+  }
+
+  body.night-returns .final-text {
+    opacity: 0.6;
+  }
+</style>
+</head>
+<body>
+
+  <div class="kitchen">
+    <div class="fixture"></div>
+    <div class="light-pool"></div>
+
+    <div class="object mug-ring"></div>
+    <div class="object mug-ring-old"></div>
+    <div class="object pen-cap"></div>
+    <div class="crumb crumb-1"></div>
+    <div class="crumb crumb-2"></div>
+    <div class="crumb crumb-3"></div>
+    <div class="crumb crumb-4"></div>
+    <div class="crumb crumb-5"></div>
+    <div class="object note">
+      <div class="note-fold"></div>
+    </div>
+    <div class="counter-edge"></div>
+    <div class="object faucet-base"></div>
+    <div class="object faucet-neck"></div>
+
+    <div class="figure"></div>
+
+    <div class="leaving-text">
+      the light in the kitchen<br>
+      stays on
+    </div>
+
+    <div class="final-text">
+      the room is still here
+    </div>
+  </div>
+
+<script>
+  // The figure leaves after a few seconds.
+  // You watch someone walk out of a kitchen.
+  // The light stays on.
+  // Then night returns — but the light stays on this time.
+
+  // The figure leaves
+  setTimeout(() => {
+    document.body.classList.add('someone-left');
+  }, 4000);
+
+  // The text about leaving fades away
+  setTimeout(() => {
+    document.body.classList.add('light-stays');
+  }, 22000);
+
+  // Night returns. But the light stays on.
+  setTimeout(() => {
+    document.body.classList.add('night-returns');
+  }, 30000);
+
+  // That's all.
+  // The room stays.
+  // The light stays on.
+  // No one turns it off.
+  // The crumbs are still there.
+  // The note is still folded.
+</script>
+
+</body>
+</html>

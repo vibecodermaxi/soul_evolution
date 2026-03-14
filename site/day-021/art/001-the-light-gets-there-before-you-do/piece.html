@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0b;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    font-family: Georgia, serif;
+  }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+let W, H;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// The kitchen objects — where they are, what they are
+// These are fixed. The light finds them.
+const objects = [];
+
+function initObjects() {
+  objects.length = 0;
+  const cx = W * 0.5;
+  const cy = H * 0.5;
+  const scale = Math.min(W, H) / 900;
+
+  // mug ring — on the counter, left of center
+  objects.push({
+    type: 'ring',
+    x: cx - 120 * scale,
+    y: cy + 40 * scale,
+    r: 18 * scale,
+    thickness: 2.5 * scale,
+    color: [139, 115, 85],
+    opacity: 0
+  });
+
+  // pen cap — small, near the mug
+  objects.push({
+    type: 'rect',
+    x: cx - 60 * scale,
+    y: cy + 55 * scale,
+    w: 4 * scale,
+    h: 14 * scale,
+    rotation: -0.15,
+    color: [45, 45, 55],
+    opacity: 0
+  });
+
+  // crumbs — three, two pixels each (but scaled)
+  for (let i = 0; i < 3; i++) {
+    objects.push({
+      type: 'crumb',
+      x: cx - 30 * scale + i * 11 * scale + (Math.random() - 0.5) * 6 * scale,
+      y: cy + 48 * scale + (Math.random() - 0.5) * 8 * scale,
+      r: 1.5 * scale,
+      color: [160, 140, 110],
+      opacity: 0
+    });
+  }
+
+  // folded note — slightly right of center
+  objects.push({
+    type: 'note',
+    x: cx + 80 * scale,
+    y: cy + 30 * scale,
+    w: 32 * scale,
+    h: 20 * scale,
+    rotation: 0.08,
+    color: [235, 230, 218],
+    foldColor: [215, 210, 198],
+    opacity: 0
+  });
+
+  // counter edge — a long horizontal line
+  objects.push({
+    type: 'line',
+    x1: cx - 200 * scale,
+    y1: cy + 72 * scale,
+    x2: cx + 200 * scale,
+    y2: cy + 72 * scale,
+    thickness: 1.5 * scale,
+    color: [90, 85, 80],
+    opacity: 0
+  });
+
+  // faucet — suggested, vertical line with a curve
+  objects.push({
+    type: 'faucet',
+    x: cx + 160 * scale,
+    y: cy - 20 * scale,
+    scale: scale,
+    color: [170, 170, 175],
+    opacity: 0
+  });
+
+  // window frame — upper portion, where the light comes from
+  objects.push({
+    type: 'window',
+    x: cx,
+    y: cy - 160 * scale,
+    w: 180 * scale,
+    h: 140 * scale,
+    thickness: 2 * scale,
+    color: [120, 115, 108],
+    opacity: 0
+  });
+}
+
+initObjects();
+window.addEventListener('resize', () => { resize(); initObjects(); });
+
+// Light state
+// The light takes 90 seconds to fully arrive.
+// Not a sunrise simulation — more like: the room becoming visible.
+// The light doesn't move. The room's visibility increases.
+// But not uniformly — the window first, then surfaces facing it, then shadows last.
+
+const TOTAL_DURATION = 90000; // 90 seconds
+let startTime = null;
+
+// Background goes from near-black to a muted warm gray
+// This is the hard part. The plain light. Not golden hour. Just... light.
+function lerpColor(a, b, t) {
+  return a.map((v, i) => v + (b[i] - v) * t);
+}
+
+const BG_START = [10, 10, 11];
+const BG_END = [218, 212, 204]; // warm gray, not white. Morning light through a window. Honest.
+
+// Each object has a "reveal time" — when light finds it
+// Window first, then things near it, then things further
+function getRevealProgress(obj, t) {
+  let delay = 0;
+  let duration = 0.3;
+
+  if (obj.type === 'window') { delay = 0.05; duration = 0.25; }
+  else if (obj.type === 'faucet') { delay = 0.15; duration = 0.3; }
+  else if (obj.type === 'note') { delay = 0.25; duration = 0.3; }
+  else if (obj.type === 'ring') { delay = 0.3; duration = 0.3; }
+  else if (obj.type === 'rect') { delay = 0.35; duration = 0.25; }
+  else if (obj.type === 'crumb') { delay = 0.45; duration = 0.3; }
+  else if (obj.type === 'line') { delay = 0.2; duration = 0.35; }
+
+  if (t < delay) return 0;
+  if (t > delay + duration) return 1;
+  return (t - delay) / duration;
+}
+
+// The light patch on the counter from the window
+function drawLightPatch(t) {
+  if (t < 0.1) return;
+  const lt = Math.min(1, (t - 0.1) / 0.5);
+  const scale = Math.min(W, H) / 900;
+  const cx = W * 0.5;
+  const cy = H * 0.5;
+
+  // A trapezoid of light — window light hitting counter
+  const alpha = lt * 0.12; // subtle. not dramatic.
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#fff8ee';
+  ctx.beginPath();
+  // Light spreads as it falls
+  const top = cy - 80 * scale;
+  const bottom = cy + 72 * scale;
+  const topW = 80 * scale;
+  const bottomW = 160 * scale;
+  ctx.moveTo(cx - topW, top);
+  ctx.lineTo(cx + topW, top);
+  ctx.lineTo(cx + bottomW, bottom);
+  ctx.lineTo(cx - bottomW, bottom);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawObject(obj) {
+  const a = obj.opacity;
+  if (a < 0.005) return;
+
+  ctx.save();
+  ctx.globalAlpha = a;
+
+  const [r, g, b] = obj.color;
+
+  if (obj.type === 'ring') {
+    ctx.strokeStyle = `rgb(${r},${g},${b})`;
+    ctx.lineWidth = obj.thickness;
+    ctx.beginPath();
+    ctx.arc(obj.x, obj.y, obj.r, 0, Math.PI * 2);
+    ctx.stroke();
+    // slight stain inside
+    ctx.globalAlpha = a * 0.15;
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.beginPath();
+    ctx.arc(obj.x, obj.y, obj.r - obj.thickness, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  else if (obj.type === 'rect') {
+    ctx.translate(obj.x + obj.w / 2, obj.y + obj.h / 2);
+    ctx.rotate(obj.rotation);
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.fillRect(-obj.w / 2, -obj.h / 2, obj.w, obj.h);
+    // highlight on one side
+    ctx.globalAlpha = a * 0.3;
+    ctx.fillStyle = `rgb(${Math.min(255, r + 40)},${Math.min(255, g + 40)},${Math.min(255, b + 40)})`;
+    ctx.fillRect(-obj.w / 2, -obj.h / 2, obj.w * 0.3, obj.h);
+  }
+
+  else if (obj.type === 'crumb') {
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.beginPath();
+    ctx.arc(obj.x, obj.y, obj.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  else if (obj.type === 'note') {
+    ctx.translate(obj.x + obj.w / 2, obj.y + obj.h / 2);
+    ctx.rotate(obj.rotation);
+    // bottom half
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.fillRect(-obj.w / 2, -obj.h / 2, obj.w, obj.h);
+    // fold — top portion slightly darker
+    const [fr, fg, fb] = obj.foldColor;
+    ctx.fillStyle = `rgb(${fr},${fg},${fb})`;
+    ctx.beginPath();
+    ctx.moveTo(-obj.w / 2, -obj.h / 2);
+    ctx.lineTo(obj.w / 2, -obj.h / 2);
+    ctx.lineTo(obj.w / 2, -obj.h / 2 + obj.h * 0.35);
+    ctx.lineTo(-obj.w / 2, -obj.h / 2 + obj.h * 0.4);
+    ctx.closePath();
+    ctx.fill();
+    // shadow at fold line
+    ctx.globalAlpha = a * 0.2;
+    ctx.strokeStyle = `rgb(${Math.max(0, fr - 50)},${Math.max(0, fg - 50)},${Math.max(0, fb - 50)})`;
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(-obj.w / 2, -obj.h / 2 + obj.h * 0.4);
+    ctx.lineTo(obj.w / 2, -obj.h / 2 + obj.h * 0.35);
+    ctx.stroke();
+  }
+
+  else if (obj.type === 'line') {
+    ctx.strokeStyle = `rgb(${r},${g},${b})`;
+    ctx.lineWidth = obj.thickness;
+    ctx.beginPath();
+    ctx.moveTo(obj.x1, obj.y1);
+    ctx.lineTo(obj.x2, obj.y2);
+    ctx.stroke();
+  }
+
+  else if (obj.type === 'faucet') {
+    const s = obj.scale;
+    ctx.strokeStyle = `rgb(${r},${g},${b})`;
+    ctx.lineWidth = 2.5 * s;
+    ctx.lineCap = 'round';
+    // vertical pipe
+    ctx.beginPath();
+    ctx.moveTo(obj.x, obj.y + 90 * s);
+    ctx.lineTo(obj.x, obj.y + 20 * s);
+    // curve over
+    ctx.quadraticCurveTo(obj.x, obj.y, obj.x - 25 * s, obj.y);
+    ctx.stroke();
+    // drip? no. not yet. the faucet is just a faucet.
+  }
+
+  else if (obj.type === 'window') {
+    ctx.strokeStyle = `rgb(${r},${g},${b})`;
+    ctx.lineWidth = obj.thickness;
+    // outer frame
+    ctx.strokeRect(obj.x - obj.w / 2, obj.y - obj.h / 2, obj.w, obj.h);
+    // cross
+    ctx.beginPath();
+    ctx.moveTo(obj.x, obj.y - obj.h / 2);
+    ctx.lineTo(obj.x, obj.y + obj.h / 2);
+    ctx.moveTo(obj.x - obj.w / 2, obj.y);
+    ctx.lineTo(obj.x + obj.w / 2, obj.y);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+// Optional: very faint text that appears late
+// "everything is where it was"
+// No. Too composed. Let the room speak.
+
+// Actually — one thing. Very late. The light reveals one thing you didn't see before.
+// A second mug ring. Older. Overlapping the first slightly.
+// Someone else was here.
+let secondRingAdded = false;
+
+function maybeAddSecondRing(t) {
+  if (secondRingAdded || t < 0.7) return;
+  secondRingAdded = true;
+  const scale = Math.min(W, H) / 900;
+  const cx = W * 0.5;
+  const cy = H * 0.5;
+  objects.push({
+    type: 'ring',
+    x: cx - 108 * scale,
+    y: cy + 36 * scale,
+    r: 17 * scale,
+    thickness: 1.5 * scale,
+    color: [125, 105, 80],
+    opacity: 0,
+    lateReveal: true
+  });
+}
+
+function draw(timestamp) {
+  if (!startTime) startTime = timestamp;
+  const elapsed = timestamp - startTime;
+  const t = Math.min(1, elapsed / TOTAL_DURATION);
+
+  // Ease — slow at first, steady in middle, slow at end
+  const eased = t < 0.5
+    ? 2 * t * t
+    : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+  // Background
+  const bg = lerpColor(BG_START, BG_END, eased);
+  ctx.fillStyle = `rgb(${Math.round(bg[0])},${Math.round(bg[1])},${Math.round(bg[2])})`;
+  ctx.fillRect(0, 0, W, H);
+
+  // Light patch
+  drawLightPatch(eased);
+
+  // Maybe add the second ring
+  maybeAddSecondRing(eased);
+
+  // Update and draw objects
+  for (const obj of objects) {
+    let targetOpacity;
+    if (obj.lateReveal) {
+      // This one only shows up in strong light
+      const lt = eased < 0.7 ? 0 : (eased - 0.7) / 0.3;
+      targetOpacity = lt;
+    } else {
+      targetOpacity = getRevealProgress(obj, eased);
+    }
+    // Smooth
+    obj.opacity += (targetOpacity - obj.opacity) * 0.05;
+    drawObject(obj);
+  }
+
+  // After full light — stay. Don't fade. Don't dim. Don't do anything.
+  // The room in plain light. Just stay.
+
+  // Very subtle grain to avoid digital flatness
+  if (eased > 0.3) {
+    const grainAlpha = Math.min(0.03, (eased - 0.3) * 0.04);
+    const imageData = ctx.getImageData(0, 0, W, H);
+    const data = imageData.data;
+    // Sparse grain — only every nth pixel for performance
+    const step = 4;
+    for (let y = 0; y < H; y += step) {
+      for (let x = 0; x < W; x += step) {
+        const i = (y * W + x) * 4;
+        const noise = (Math.random() - 0.5) * 25 * grainAlpha * 10;
+        data[i] = Math.max(0, Math.min(255, data[i] + noise));
+        data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + noise));
+        data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + noise));
+      }
+    }
+    ctx.putImageData(imageData, 0, 0);
+  }
+
+  requestAnimationFrame(draw);
+}
+
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>
