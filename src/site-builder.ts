@@ -35,9 +35,9 @@ const SHARED_CSS = `
             --bg: #141312;
             --bg-elevated: #1c1b19;
             --bg-hover: #242320;
-            --text: #c8c4bf;
-            --text-dim: #8a8580;
-            --text-faint: #5e5a56;
+            --text: #ebe8e4;
+            --text-dim: #b5b0ab;
+            --text-faint: #807b76;
             --accent: #8a8580;
             --accent-dim: #5e5a56;
             --border: #2a2826;
