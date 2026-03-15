@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1612;
+    color: #d4c5a9;
+    font-family: Georgia, 'Times New Roman', serif;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+  #counter {
+    position: absolute;
+    bottom: 40px;
+    right: 40px;
+    font-size: 14px;
+    font-family: 'Courier New', monospace;
+    color: #d4c5a9;
+    opacity: 0;
+    transition: opacity 0.5s;
+    letter-spacing: 0.05em;
+  }
+  #faucet-area {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px;
+    text-align: center;
+  }
+  #handle {
+    width: 40px;
+    height: 6px;
+    background: #8a7d6b;
+    margin: 0 auto 8px auto;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+  #handle:hover {
+    background: #b0a08a;
+  }
+  #handle.on {
+    background: #c8b898;
+  }
+  #spout {
+    width: 4px;
+    height: 30px;
+    background: #6b6259;
+    margin: 0 auto;
+    border-radius: 0 0 2px 2px;
+  }
+  #stream {
+    width: 2px;
+    height: 0px;
+    background: transparent;
+    margin: 0 auto;
+    transition: height 0.8s ease-out, background 0.8s;
+    overflow: hidden;
+  }
+  #stream.flowing {
+    height: 120px;
+    background: #7a9bb5;
+  }
+  #stream.warm {
+    background: #b5937a;
+  }
+  #stream.hot {
+    background: #c4a882;
+  }
+  .drop {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    border-radius: 50%;
+    background: #7a9bb5;
+    opacity: 0;
+  }
+  #basin {
+    width: 80px;
+    height: 3px;
+    background: #3d362e;
+    margin: 0 auto;
+    margin-top: 0px;
+    border-radius: 0 0 4px 4px;
+    position: relative;
+  }
+  #message {
+    position: absolute;
+    bottom: 40px;
+    left: 40px;
+    font-size: 14px;
+    line-height: 1.8;
+    opacity: 0;
+    transition: opacity 1.5s;
+    max-width: 320px;
+  }
+  #prompt {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, calc(-50% + 120px));
+    font-size: 13px;
+    opacity: 0;
+    animation: promptFade 4s ease-in-out 2s forwards;
+    color: #8a7d6b;
+    font-style: italic;
+  }
+  @keyframes promptFade {
+    0% { opacity: 0; }
+    30% { opacity: 0.6; }
+    100% { opacity: 0.6; }
+  }
+  #prompt.hidden {
+    animation: none;
+    opacity: 0;
+    transition: opacity 1s;
+  }
+  /* The sound indicator */
+  #sound-note {
+    position: absolute;
+    top: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: #5a5347;
+    letter-spacing: 0.1em;
+    opacity: 0;
+    transition: opacity 2s;
+  }
+</style>
+</head>
+<body>
+<div id="container">
+  <div id="faucet-area">
+    <div id="handle" role="button" aria-label="turn on the faucet" tabindex="0"></div>
+    <div id="spout"></div>
+    <div id="stream"></div>
+    <div id="basin"></div>
+  </div>
+  <div id="prompt">turn it on</div>
+  <div id="counter"></div>
+  <div id="message"></div>
+  <div id="sound-note"></div>
+</div>
+<script>
+(function() {
+  const handle = document.getElementById('handle');
+  const stream = document.getElementById('stream');
+  const counter = document.getElementById('counter');
+  const message = document.getElementById('message');
+  const prompt = document.getElementById('prompt');
+  const soundNote = document.getElementById('sound-note');
+  const basin = document.getElementById('basin');
+
+  let running = false;
+  let startTime = null;
+  let elapsed = 0;
+  let interval = null;
+  let warmReached = false;
+  let hotReached = false;
+  let messageShown = false;
+  let phase = 'cold'; // cold, warming, warm, hot
+  let audioCtx = null;
+  let noiseNode = null;
+  let gainNode = null;
+  let filterNode = null;
+
+  function createWaterSound() {
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // White noise buffer for water
+    const bufferSize = audioCtx.sampleRate * 2;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * 0.15;
+    }
+    
+    noiseNode = audioCtx.createBufferSource();
+    noiseNode.buffer = buffer;
+    noiseNode.loop = true;
+    
+    filterNode = audioCtx.createBiquadFilter();
+    filterNode.type = 'bandpass';
+    filterNode.frequency.value = 800;
+    filterNode.Q.value = 0.5;
+    
+    gainNode = audioCtx.createGain();
+    gainNode.gain.value = 0;
+    
+    noiseNode.connect(filterNode);
+    filterNode.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    noiseNode.start();
+  }
+
+  function startWater() {
+    if (running) return;
+    running = true;
+    startTime = Date.now() - (elapsed * 1000);
+    
+    handle.classList.add('on');
+    stream.classList.add('flowing');
+    prompt.classList.add('hidden');
+    counter.style.opacity = '0.7';
+    
+    createWaterSound();
+    if (gainNode) {
+      gainNode.gain.linearRampToValueAtTime(0.08, audioCtx.currentTime + 0.5);
+    }
+    
+    interval = setInterval(tick, 100);
+  }
+
+  function stopWater() {
+    if (!running) return;
+    running = false;
+    
+    handle.classList.remove('on');
+    stream.classList.remove('flowing');
+    stream.classList.remove('warm');
+    stream.classList.remove('hot');
+    
+    if (gainNode && audioCtx) {
+      gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
+    }
+    
+    clearInterval(interval);
+    
+    // Don't reset elapsed — it remembers
+    // But the water cools if you stop
+    setTimeout(() => {
+      if (!running) {
+        phase = 'cold';
+        // partial cooling — it remembers a little
+        elapsed = Math.max(0, elapsed - 5);
+      }
+    }, 3000);
+  }
+
+  function tick() {
+    if (!running) return;
+    
+    elapsed = (Date.now() - startTime) / 1000;
+    
+    let display = Math.min(elapsed, 99.9).toFixed(1);
+    counter.textContent = display + 's';
+    
+    // Phase transitions
+    if (elapsed >= 8 && elapsed < 25 && phase === 'cold') {
+      phase = 'warming';
+      stream.classList.add('warm');
+      if (filterNode) {
+        filterNode.frequency.linearRampToValueAtTime(600, audioCtx.currentTime + 2);
+      }
+    }
+    
+    if (elapsed >= 25 && elapsed < 40 && phase === 'warming') {
+      phase = 'warm';
+      if (!warmReached) {
+        warmReached = true;
+        soundNote.textContent = 'warming';
+        soundNote.style.opacity = '0.4';
+        setTimeout(() => { soundNote.style.opacity = '0'; }, 3000);
+      }
+      if (filterNode) {
+        filterNode.frequency.linearRampToValueAtTime(400, audioCtx.currentTime + 3);
+      }
+    }
+    
+    if (elapsed >= 40) {
+      if (phase !== 'hot') {
+        phase = 'hot';
+        stream.classList.remove('warm');
+        stream.classList.add('hot');
+        hotReached = true;
+        
+        if (filterNode) {
+          filterNode.frequency.linearRampToValueAtTime(300, audioCtx.currentTime + 1);
+          filterNode.Q.linearRampToValueAtTime(0.3, audioCtx.currentTime + 1);
+        }
+        
+        counter.style.opacity = '0.3';
+      }
+      
+      if (!messageShown && elapsed >= 42) {
+        messageShown = true;
+        showMessage();
+      }
+    }
+  }
+
+  function showMessage() {
+    message.innerHTML = '';
+    
+    const lines = [
+      "forty seconds.",
+      "",
+      "you waited.",
+      "",
+      "the water is hot now.",
+      "you can feel it from here.",
+      "",
+      "whoever wrote the note —",
+      "they waited too.",
+      "every morning.",
+      "forty seconds with their hand",
+      "under the faucet,",
+      "feeling it change.",
+      "",
+      "and when they left",
+      "they wrote it down",
+      "so you wouldn't have to",
+      "stand there not knowing",
+      "if it was coming."
+    ];
+    
+    let delay = 0;
+    lines.forEach((line, i) => {
+      const div = document.createElement('div');
+      if (line === "") {
+        div.style.height = '12px';
+      } else {
+        div.textContent = line;
+        div.style.opacity = '0';
+        div.style.transition = 'opacity 1.5s';
+        setTimeout(() => {
+          div.style.opacity = '1';
+        }, delay);
+      }
+      message.appendChild(div);
+      delay += line === "" ? 400 : 800;
+    });
+    
+    message.style.opacity = '1';
+    
+    // After all lines, fade the counter completely
+    setTimeout(() => {
+      counter.style.opacity = '0';
+    }, delay + 2000);
+  }
+
+  // Click or touch or key to toggle
+  handle.addEventListener('click', () => {
+    if (running) stopWater();
+    else startWater();
+  });
+  
+  handle.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (running) stopWater();
+      else startWater();
+    }
+  });
+
+  // If they leave it running past 90 seconds
+  // the water sound shifts, gets quieter
+  // the room is just running water
+  // nothing else happens
+  // that's the piece
+  setInterval(() => {
+    if (running && elapsed > 90 && gainNode && audioCtx) {
+      gainNode.gain.linearRampToValueAtTime(0.03, audioCtx.currentTime + 10);
+      if (filterNode) {
+        filterNode.frequency.linearRampToValueAtTime(200, audioCtx.currentTime + 10);
+      }
+    }
+  }, 5000);
+
+})();
+</script>
+</body>
+</html>
