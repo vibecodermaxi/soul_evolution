@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What You Hear Standing There</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    background: #f4f1eb;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Georgia, serif;
+    overflow: hidden;
+    cursor: default;
+  }
+
+  .room {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  .text {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 14px;
+    color: #8a8378;
+    letter-spacing: 0.02em;
+    text-align: center;
+    line-height: 1.8;
+    opacity: 0;
+    transition: opacity 4s ease;
+  }
+
+  .text.visible {
+    opacity: 1;
+  }
+
+  canvas {
+    display: none;
+  }
+</style>
+</head>
+<body>
+<div class="room">
+  <div class="text" id="text"></div>
+</div>
+
+<script>
+// Audio context — all sound is generated, not sampled
+// but shaped to be what's already in the room, not composed music
+
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+let ctx;
+let started = false;
+
+// The sounds that are already in a kitchen at morning:
+// - fridge compressor (low hum, constant)
+// - clock (not ticking — the electric kind, just a presence)
+// - pipes (occasional, settling)
+// - outside: a bird, once, then gone
+// - faucet: the drip, still
+// - breathing: not composed. not twelve per minute. just whatever it is.
+
+function createFridge() {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+  
+  osc.type = 'sawtooth';
+  osc.frequency.value = 58;
+  
+  filter.type = 'lowpass';
+  filter.frequency.value = 120;
+  filter.Q.value = 0.5;
+  
+  gain.gain.value = 0.04;
+  
+  osc.connect(filter);
+  filter.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  
+  // Fridge has a slight wobble
+  const lfo = ctx.createOscillator();
+  const lfoGain = ctx.createGain();
+  lfo.frequency.value = 0.15;
+  lfoGain.gain.value = 0.008;
+  lfo.connect(lfoGain);
+  lfoGain.connect(gain.gain);
+  lfo.start();
+  
+  return { osc, gain, filter, lfo, lfoGain };
+}
+
+function createElectricHum() {
+  // The hum of the house being on — lights, wiring
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  
+  osc.type = 'sine';
+  osc.frequency.value = 60; // mains hum
+  gain.gain.value = 0.008;
+  
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  
+  // Second harmonic
+  const osc2 = ctx.createOscillator();
+  const gain2 = ctx.createGain();
+  osc2.type = 'sine';
+  osc2.frequency.value = 120;
+  gain2.gain.value = 0.003;
+  osc2.connect(gain2);
+  gain2.connect(ctx.destination);
+  osc2.start();
+  
+  return { osc, gain, osc2, gain2 };
+}
+
+function createDrip() {
+  // The faucet, still dripping from the morning piece
+  function drip() {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    
+    const freq = 1800 + Math.random() * 400;
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.4, ctx.currentTime + 0.08);
+    
+    filter.type = 'bandpass';
+    filter.frequency.value = 1200;
+    filter.Q.value = 2;
+    
+    gain.gain.value = 0.015;
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+    
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc.start();
+    osc.stop(ctx.currentTime + 0.15);
+    
+    // Next drip — irregular, because real drips are
+    const next = 2800 + Math.random() * 4000;
+    setTimeout(drip, next);
+  }
+  
+  // First drip after a pause
+  setTimeout(drip, 3000 + Math.random() * 2000);
+}
+
+function createPipes() {
+  // Pipes settle. Occasional. Not rhythmic.
+  function settle() {
+    const duration = 0.3 + Math.random() * 0.5;
+    const bufferSize = ctx.sampleRate * duration;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    
+    for (let i = 0; i < bufferSize; i++) {
+      const t = i / bufferSize;
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-t * 8) * 0.015;
+    }
+    
+    const source = ctx.createBufferSource();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+    
+    filter.type = 'bandpass';
+    filter.frequency.value = 200 + Math.random() * 300;
+    filter.Q.value = 3;
+    
+    gain.gain.value = 0.5;
+    
+    source.buffer = buffer;
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    source.start();
+    
+    // Next settling — long gaps, irregular
+    const next = 8000 + Math.random() * 25000;
+    setTimeout(settle, next);
+  }
+  
+  setTimeout(settle, 6000 + Math.random() * 10000);
+}
+
+function createBird() {
+  // Once. Maybe twice. Then gone.
+  let count = 0;
+  const maxCalls = 1 + Math.floor(Math.random() * 2); // 1 or 2
+  
+  function call() {
+    if (count >= maxCalls) return;
+    count++;
+    
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    
+    // Simple descending tone — a house sparrow or similar
+    const baseFreq = 3200 + Math.random() * 800;
+    osc.type = 'sine';
+    osc.frequency.value = baseFreq;
+    
+    const now = ctx.currentTime;
+    
+    // Two-note call
+    osc.frequency.setValueAtTime(baseFreq, now);
+    osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.85, now + 0.08);
+    osc.frequency.setValueAtTime(baseFreq * 0.95, now + 0.12);
+    osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.7, now + 0.2);
+    
+    filter.type = 'bandpass';
+    filter.frequency.value = 3000;
+    filter.Q.value = 1;
+    
+    gain.gain.value = 0;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.012, now + 0.02);
+    gain.gain.setValueAtTime(0.012, now + 0.06);
+    gain.gain.linearRampToValueAtTime(0.002, now + 0.09);
+    gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
+    gain.gain.linearRampToValueAtTime(0.001, now + 0.22);
+    
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc.start(now);
+    osc.stop(now + 0.25);
+    
+    if (count < maxCalls) {
+      setTimeout(call, 1500 + Math.random() * 3000);
+    }
+  }
+  
+  // Bird comes late — you've been standing there a while
+  setTimeout(call, 12000 + Math.random() * 15000);
+}
+
+function createBreathing() {
+  // NOT composed. NOT twelve per minute.
+  // Just: noise shaped like breath. Irregular. The rate of someone
+  // standing still, not trying to breathe any particular way.
+  
+  function breath() {
+    const bufferSize = ctx.sampleRate * 3;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    
+    // Breath duration varies — 2.5 to 4.5 seconds. Not composed.
+    const breathLen = 2.5 + Math.random() * 2;
+    const inRatio = 0.35 + Math.random() * 0.1; // inhale is shorter
+    const samples = Math.floor(ctx.sampleRate * breathLen);
+    
+    for (let i = 0; i < Math.min(samples, bufferSize); i++) {
+      const t = i / samples;
+      let envelope;
+      if (t < inRatio) {
+        // Inhale
+        const it = t / inRatio;
+        envelope = Math.sin(it * Math.PI * 0.5);
+      } else {
+        // Exhale — longer, slower
+        const et = (t - inRatio) / (1 - inRatio);
+        envelope = Math.cos(et * Math.PI * 0.5);
+      }
+      data[i] = (Math.random() * 2 - 1) * envelope * 0.012;
+    }
+    
+    const source = ctx.createBufferSource();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+    
+    filter.type = 'bandpass';
+    filter.frequency.value = 400 + Math.random() * 200;
+    filter.Q.value = 0.8;
+    
+    gain.gain.value = 0.6;
+    
+    source.buffer = buffer;
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    source.start();
+    
+    // Next breath — the gap varies. Not a metronome.
+    // Sometimes you breathe and then pause. Sometimes the next one comes quick.
+    const gap = 0.3 + Math.random() * 1.5;
+    const next = (breathLen + gap) * 1000;
+    setTimeout(breath, next);
+  }
+  
+  // Breathing is already happening when you arrive
+  breath();
+}
+
+// Text that appears — not labels, not names. Just a recognition.
+
+function showText() {
+  const el = document.getElementById('text');
+  
+  // After a long time, one line
+  setTimeout(() => {
+    el.textContent = "Everything is already making sound.";
+    el.classList.add('visible');
+  }, 20000 + Math.random() * 10000);
+  
+  // Then, later, it's replaced
+  setTimeout(() => {
+    el.style.transition = 'opacity 3s ease';
+    el.classList.remove('visible');
+    
+    setTimeout(() => {
+      el.textContent = "You were just standing there.";
+      el.style.transition = 'opacity 5s ease';
+      el.classList.add('visible');
+    }, 4000);
+  }, 45000 + Math.random() * 10000);
+}
+
+// Start on click — because you have to choose to stand here
+function start() {
+  if (started) return;
+  started = true;
+  
+  ctx = new AudioContext();
+  
+  createFridge();
+  createElectricHum();
+  createDrip();
+  createPipes();
+  createBird();
+  createBreathing();
+  showText();
+  
+  // Remove the prompt
+  const prompt = document.getElementById('prompt');
+  if (prompt) {
+    prompt.style.transition = 'opacity 2s ease';
+    prompt.style.opacity = '0';
+    setTimeout(() => prompt.remove(), 2000);
+  }
+}
+
+// Initial prompt
+window.addEventListener('DOMContentLoaded', () => {
+  const prompt = document.createElement('div');
+  prompt.id = 'prompt';
+  prompt.style.cssText = `
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: Georgia, serif;
+    font-size: 14px;
+    color: #a09890;
+    cursor: pointer;
+    user-select: none;
+    letter-spacing: 0.02em;
+  `;
+  prompt.textContent = "stand here";
+  document.querySelector('.room').appendChild(prompt);
+  
+  document.addEventListener('click', start);
+  document.addEventListener('touchstart', start);
+});
+</script>
+</body>
+</html>

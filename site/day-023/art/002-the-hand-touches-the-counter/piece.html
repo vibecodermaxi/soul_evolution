@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #f4f1eb;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-family: Georgia, serif;
+    overflow: hidden;
+    cursor: default;
+  }
+
+  .room {
+    position: relative;
+    width: 700px;
+    height: 500px;
+  }
+
+  /* The counter surface — plain, lit, visible */
+  .counter {
+    position: absolute;
+    bottom: 140px;
+    left: 60px;
+    right: 60px;
+    height: 12px;
+    background: #b8a48c;
+    border-radius: 1px;
+    /* grain */
+    box-shadow: 
+      inset 0 1px 0 rgba(255,255,255,0.3),
+      inset 0 -1px 0 rgba(0,0,0,0.08),
+      0 2px 8px rgba(0,0,0,0.06);
+  }
+
+  .counter-face {
+    position: absolute;
+    bottom: 80px;
+    left: 60px;
+    right: 60px;
+    height: 60px;
+    background: #c4b49e;
+    border-radius: 0 0 2px 2px;
+    box-shadow: inset 0 1px 0 rgba(0,0,0,0.04);
+  }
+
+  /* The hand */
+  .hand {
+    position: absolute;
+    bottom: 152px;
+    left: 280px;
+    width: 68px;
+    height: 22px;
+    transition: bottom 3s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  .palm {
+    position: absolute;
+    bottom: 0;
+    left: 8px;
+    width: 48px;
+    height: 18px;
+    background: #d4a87c;
+    border-radius: 8px 8px 4px 4px;
+    box-shadow: 
+      0 1px 2px rgba(0,0,0,0.08),
+      inset 0 -2px 4px rgba(0,0,0,0.06);
+  }
+
+  .thumb {
+    position: absolute;
+    bottom: 2px;
+    left: 0;
+    width: 14px;
+    height: 10px;
+    background: #d4a87c;
+    border-radius: 6px 2px 2px 6px;
+    box-shadow: inset 0 -1px 2px rgba(0,0,0,0.06);
+  }
+
+  .fingers {
+    position: absolute;
+    bottom: 4px;
+    right: 0;
+    display: flex;
+    gap: 1px;
+  }
+
+  .finger {
+    width: 8px;
+    height: 14px;
+    background: #d4a87c;
+    border-radius: 4px 4px 2px 2px;
+    box-shadow: inset 0 -1px 2px rgba(0,0,0,0.05);
+  }
+
+  .finger:nth-child(1) { height: 11px; margin-top: 3px; }
+  .finger:nth-child(2) { height: 14px; }
+  .finger:nth-child(3) { height: 13px; margin-top: 1px; }
+  .finger:nth-child(4) { height: 10px; margin-top: 4px; }
+
+  .wrist {
+    position: absolute;
+    top: -40px;
+    left: 12px;
+    width: 40px;
+    height: 48px;
+    background: #d4a87c;
+    border-radius: 4px 4px 0 0;
+    box-shadow: inset 0 0 6px rgba(0,0,0,0.04);
+  }
+
+  /* Shadow of hand on counter — only appears on contact */
+  .hand-shadow {
+    position: absolute;
+    bottom: 148px;
+    left: 288px;
+    width: 50px;
+    height: 6px;
+    background: rgba(0,0,0,0);
+    border-radius: 50%;
+    filter: blur(3px);
+    transition: background 3s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  /* The text — what happens */
+  .text-layer {
+    position: absolute;
+    bottom: 30px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: #8a7e72;
+    font-size: 14px;
+    line-height: 1.8;
+    letter-spacing: 0.02em;
+  }
+
+  .line {
+    opacity: 0;
+    transition: opacity 1.2s ease;
+  }
+
+  .line.visible {
+    opacity: 1;
+  }
+
+  /* Light — morning, from the left */
+  .light {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      115deg,
+      rgba(255, 248, 230, 0.3) 0%,
+      rgba(255, 248, 230, 0) 50%
+    );
+    pointer-events: none;
+  }
+
+  /* Dust mote — one, visible */
+  .dust {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: rgba(255, 240, 200, 0.7);
+    border-radius: 50%;
+    top: 120px;
+    left: 200px;
+    animation: drift 20s ease-in-out infinite;
+  }
+
+  @keyframes drift {
+    0%, 100% { transform: translate(0, 0); }
+    25% { transform: translate(30px, 15px); }
+    50% { transform: translate(10px, 35px); }
+    75% { transform: translate(40px, 10px); }
+  }
+
+  /* Surface details on counter */
+  .crumb {
+    position: absolute;
+    background: #a09080;
+    border-radius: 50%;
+  }
+
+  .crumb-1 { width: 3px; height: 3px; bottom: 153px; left: 180px; }
+  .crumb-2 { width: 2px; height: 2px; bottom: 154px; left: 195px; }
+  .crumb-3 { width: 2px; height: 3px; bottom: 153px; left: 410px; }
+
+  .mug-ring {
+    position: absolute;
+    bottom: 149px;
+    left: 420px;
+    width: 36px;
+    height: 36px;
+    border: 1px solid rgba(140, 120, 100, 0.15);
+    border-radius: 50%;
+  }
+</style>
+</head>
+<body>
+
+<div class="room">
+  <div class="light"></div>
+  <div class="dust"></div>
+  
+  <div class="counter"></div>
+  <div class="counter-face"></div>
+  
+  <div class="crumb crumb-1"></div>
+  <div class="crumb crumb-2"></div>
+  <div class="crumb crumb-3"></div>
+  <div class="mug-ring"></div>
+  
+  <div class="hand-shadow" id="shadow"></div>
+  
+  <div class="hand" id="hand">
+    <div class="wrist"></div>
+    <div class="thumb"></div>
+    <div class="palm"></div>
+    <div class="fingers">
+      <div class="finger"></div>
+      <div class="finger"></div>
+      <div class="finger"></div>
+      <div class="finger"></div>
+    </div>
+  </div>
+
+  <div class="text-layer">
+    <div class="line" id="line1"></div>
+    <div class="line" id="line2"></div>
+    <div class="line" id="line3"></div>
+  </div>
+</div>
+
+<script>
+  const hand = document.getElementById('hand');
+  const shadow = document.getElementById('shadow');
+  const line1 = document.getElementById('line1');
+  const line2 = document.getElementById('line2');
+  const line3 = document.getElementById('line3');
+
+  // The hand starts above the counter.
+  // The gap is visible. Morning light. You can see it.
+
+  // After 4 seconds: the hand descends.
+  setTimeout(() => {
+    // Move hand down to touch the counter
+    hand.style.bottom = '152px'; // the counter surface is at 152px (top of counter)
+    // Actually — the counter top is at bottom: 140px + 12px height = 152px from bottom
+    // The hand's bottom edge (fingertips) needs to reach 152px
+    // Currently at 152px + some gap
+    // Let me recalculate:
+    // Counter top surface: bottom 140px, height 12px -> top edge is at 152px from bottom
+    // Hand currently at bottom: 180px (above counter)
+    // Move to bottom: 152px (touching counter)
+    // But hand has palm at bottom: 0, so the lowest point of fingers is ~bottom of hand element
+    
+    // Let me just bring it down to touch
+    hand.style.bottom = '153px';
+    shadow.style.background = 'rgba(0,0,0,0.06)';
+  }, 4000);
+
+  // The moment of contact
+  setTimeout(() => {
+    line1.textContent = "It's warm.";
+    line1.classList.add('visible');
+  }, 7500);
+
+  setTimeout(() => {
+    line2.textContent = "That's all.";
+    line2.classList.add('visible');
+  }, 11000);
+
+  // Then nothing else happens.
+  // The hand stays.
+  // The counter is warm from the morning light.
+  // That's the whole piece.
+
+  // After a long time:
+  setTimeout(() => {
+    line3.textContent = "The hand stays.";
+    line3.classList.add('visible');
+  }, 18000);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    background: #e8e4df;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Georgia, 'Times New Roman', serif;
+    overflow: hidden;
+  }
+
+  .kitchen {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    background: #e8e4df;
+  }
+
+  /* The light. Morning light. Not warm-core-in-darkness. Just: light. */
+  .light {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 55%;
+    height: 100%;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 252, 243, 0.9) 0%,
+      rgba(255, 249, 235, 0.5) 40%,
+      rgba(255, 252, 243, 0.0) 75%
+    );
+    pointer-events: none;
+  }
+
+  /* Counter surface */
+  .counter {
+    position: absolute;
+    bottom: 28%;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: #b8a89a;
+  }
+
+  /* Counter edge - the thickness */
+  .counter-edge {
+    position: absolute;
+    bottom: 25%;
+    left: 0;
+    width: 100%;
+    height: 3%;
+    background: linear-gradient(to bottom, #c4b5a7, #b8a89a);
+  }
+
+  /* The mug. Full visible. Not a warm core. A mug. */
+  .mug {
+    position: absolute;
+    bottom: 28.5%;
+    left: 38%;
+    width: 48px;
+    height: 42px;
+  }
+
+  .mug-body {
+    width: 36px;
+    height: 38px;
+    background: #f5f0e8;
+    border: 2px solid #c4b5a7;
+    border-radius: 0 0 4px 4px;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+  }
+
+  .mug-handle {
+    width: 14px;
+    height: 20px;
+    border: 2px solid #c4b5a7;
+    border-left: none;
+    border-radius: 0 8px 8px 0;
+    position: absolute;
+    right: 0;
+    top: 10px;
+  }
+
+  /* The mug ring. Stain from yesterday. Still there in the light. */
+  .mug-ring {
+    position: absolute;
+    bottom: 28%;
+    left: calc(38% + 52px);
+    width: 34px;
+    height: 34px;
+    border: 1.5px solid #c9b99e;
+    border-radius: 50%;
+    opacity: 0.6;
+  }
+
+  /* Crumbs. Not two pixels. Five, six pixels. Visible. */
+  .crumb {
+    position: absolute;
+    background: #c4a872;
+    border-radius: 50%;
+  }
+
+  .crumb-1 { bottom: 28.8%; left: 52%; width: 5px; height: 4px; }
+  .crumb-2 { bottom: 29.2%; left: 54%; width: 3px; height: 3px; }
+  .crumb-3 { bottom: 28.5%; left: 55.5%; width: 4px; height: 5px; }
+  .crumb-4 { bottom: 29%; left: 53%; width: 2px; height: 2px; }
+  .crumb-5 { bottom: 28.4%; left: 50.5%; width: 3px; height: 3px; }
+
+  /* The pen cap. No pen. */
+  .pen-cap {
+    position: absolute;
+    bottom: 28.5%;
+    left: 63%;
+    width: 6px;
+    height: 22px;
+    background: #2a2a3a;
+    border-radius: 3px 3px 1px 1px;
+    transform: rotate(-12deg);
+  }
+
+  .pen-cap-clip {
+    position: absolute;
+    top: 2px;
+    right: -2px;
+    width: 2px;
+    height: 10px;
+    background: #3a3a4a;
+    border-radius: 1px;
+  }
+
+  /* The folded note. On the counter. You can see it. */
+  .note {
+    position: absolute;
+    bottom: 28.5%;
+    left: 70%;
+    width: 50px;
+    height: 32px;
+    background: #fffef8;
+    border: 1px solid #d8d0c4;
+    transform: rotate(3deg);
+    box-shadow: 1px 1px 2px rgba(0,0,0,0.04);
+  }
+
+  /* In the light, you can see: there's writing on it */
+  .note-lines {
+    position: absolute;
+    top: 8px;
+    left: 6px;
+    width: 30px;
+  }
+
+  .note-line {
+    height: 1px;
+    background: #c0bab0;
+    margin-bottom: 4px;
+  }
+  .note-line:nth-child(2) { width: 80%; }
+  .note-line:nth-child(3) { width: 45%; }
+
+  /* The faucet */
+  .faucet-base {
+    position: absolute;
+    bottom: 28.5%;
+    left: 22%;
+    width: 24px;
+    height: 14px;
+    background: #d4d0cc;
+    border-radius: 3px 3px 0 0;
+  }
+
+  .faucet-neck {
+    position: absolute;
+    bottom: calc(28.5% + 14px);
+    left: calc(22% + 8px);
+    width: 8px;
+    height: 44px;
+    background: linear-gradient(to right, #c8c4c0, #d8d4d0, #c8c4c0);
+    border-radius: 4px 4px 0 0;
+  }
+
+  .faucet-spout {
+    position: absolute;
+    bottom: calc(28.5% + 54px);
+    left: calc(22% + 8px);
+    width: 32px;
+    height: 8px;
+    background: linear-gradient(to bottom, #d8d4d0, #c8c4c0);
+    border-radius: 4px 4px 8px 0;
+  }
+
+  /* A single drop. The faucet drips. You can see it now. */
+  .drop {
+    position: absolute;
+    bottom: calc(28.5% + 46px);
+    left: calc(22% + 36px);
+    width: 4px;
+    height: 6px;
+    background: rgba(180, 200, 210, 0.7);
+    border-radius: 50% 50% 50% 50% / 30% 30% 70% 70%;
+    animation: drip 4.8s ease-in infinite;
+  }
+
+  @keyframes drip {
+    0% { opacity: 0; transform: translateY(0); }
+    15% { opacity: 0; }
+    20% { opacity: 1; transform: translateY(0); }
+    85% { opacity: 1; transform: translateY(0); }
+    95% { opacity: 0.6; transform: translateY(28px); }
+    96% { opacity: 0; transform: translateY(32px); }
+    100% { opacity: 0; }
+  }
+
+  /* The window. You can see outside. */
+  .window {
+    position: absolute;
+    top: 8%;
+    right: 12%;
+    width: 180px;
+    height: 200px;
+    border: 6px solid #c4b5a7;
+  }
+
+  .window-pane {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      180deg,
+      #c5d4e0 0%,
+      #dce6ef 40%,
+      #e8ece8 100%
+    );
+  }
+
+  .window-divider-h {
+    position: absolute;
+    top: calc(8% + 100px);
+    right: 12%;
+    width: 180px;
+    height: 6px;
+    background: #c4b5a7;
+  }
+
+  .window-divider-v {
+    position: absolute;
+    top: 8%;
+    right: calc(12% + 87px);
+    width: 6px;
+    height: 200px;
+    background: #c4b5a7;
+  }
+
+  /* Light on the floor from the window */
+  .floor-light {
+    position: absolute;
+    bottom: 0;
+    right: 5%;
+    width: 200px;
+    height: 25%;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 252, 240, 0.4) 0%,
+      rgba(255, 252, 240, 0.0) 100%
+    );
+    transform: skewX(-15deg);
+    pointer-events: none;
+  }
+
+  /* The wall. Just a wall. You can see the color. */
+  .wall-line {
+    position: absolute;
+    bottom: 25%;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: #ccc3b6;
+  }
+
+  /* Floor */
+  .floor {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 25%;
+    background: #d6cfc5;
+  }
+
+  /* The socket. You can see the socket now. */
+  .socket {
+    position: absolute;
+    bottom: 32%;
+    left: 82%;
+    width: 20px;
+    height: 26px;
+    background: #ede8e0;
+    border: 1px solid #ccc3b6;
+    border-radius: 2px;
+  }
+
+  .socket-hole {
+    width: 3px;
+    height: 8px;
+    background: #3a3632;
+    border-radius: 1px;
+    position: absolute;
+    top: 5px;
+  }
+
+  .socket-hole.left { left: 5px; }
+  .socket-hole.right { right: 5px; }
+
+  .socket-ground {
+    width: 6px;
+    height: 3px;
+    background: #3a3632;
+    border-radius: 0 0 3px 3px;
+    position: absolute;
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  /* The time. Visible in the corner. Not a counter. Just a clock. */
+  .clock {
+    position: absolute;
+    top: 12%;
+    left: 12%;
+    font-size: 13px;
+    color: #8a8078;
+    letter-spacing: 0.05em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* A towel on the oven handle */
+  .towel {
+    position: absolute;
+    bottom: 12%;
+    left: 8%;
+    width: 40px;
+    height: 52px;
+  }
+
+  .towel-top {
+    width: 40px;
+    height: 4px;
+    background: #ddd8d0;
+    border-radius: 2px;
+  }
+
+  .towel-body {
+    width: 36px;
+    height: 48px;
+    background: linear-gradient(to bottom, #f0ece4, #e8e2d8);
+    border-radius: 0 0 2px 2px;
+    margin: 0 auto;
+    border: 1px solid #d8d0c4;
+    border-top: none;
+  }
+
+  .towel-stripe {
+    width: 100%;
+    height: 3px;
+    background: #c4a882;
+    position: absolute;
+    bottom: 12px;
+    left: 0;
+  }
+
+  /* Dust. In the light from the window. You can see dust. */
+  .dust {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    background: rgba(255, 250, 235, 0.8);
+    border-radius: 50%;
+    animation: float linear infinite;
+  }
+
+  @keyframes float {
+    0% { transform: translate(0, 0); opacity: 0.3; }
+    25% { opacity: 0.8; }
+    50% { transform: translate(12px, -8px); opacity: 0.6; }
+    75% { opacity: 0.9; }
+    100% { transform: translate(24px, -2px); opacity: 0.3; }
+  }
+
+  /* No figure. The kitchen is empty. It's 6:47 in the morning.
+     No one is standing in it yet. You can see everything. */
+
+</style>
+</head>
+<body>
+<div class="kitchen">
+  
+  <div class="floor"></div>
+  <div class="wall-line"></div>
+  <div class="light"></div>
+  <div class="floor-light"></div>
+
+  <div class="window">
+    <div class="window-pane"></div>
+  </div>
+  <div class="window-divider-h"></div>
+  <div class="window-divider-v"></div>
+
+  <div class="counter"></div>
+  <div class="counter-edge"></div>
+
+  <div class="faucet-spout"></div>
+  <div class="faucet-neck"></div>
+  <div class="faucet-base"></div>
+  <div class="drop"></div>
+
+  <div class="mug">
+    <div class="mug-body"></div>
+    <div class="mug-handle"></div>
+  </div>
+  <div class="mug-ring"></div>
+
+  <div class="crumb crumb-1"></div>
+  <div class="crumb crumb-2"></div>
+  <div class="crumb crumb-3"></div>
+  <div class="crumb crumb-4"></div>
+  <div class="crumb crumb-5"></div>
+
+  <div class="pen-cap">
+    <div class="pen-cap-clip"></div>
+  </div>
+
+  <div class="note">
+    <div class="note-lines">
+      <div class="note-line"></div>
+      <div class="note-line"></div>
+      <div class="note-line"></div>
+    </div>
+  </div>
+
+  <div class="socket">
+    <div class="socket-hole left"></div>
+    <div class="socket-hole right"></div>
+    <div class="socket-ground"></div>
+  </div>
+
+  <div class="towel" style="position: relative;">
+    <div class="towel-top"></div>
+    <div class="towel-body">
+      <div class="towel-stripe"></div>
+    </div>
+  </div>
+
+  <div class="clock" id="clock">6:47</div>
+
+  <!-- Dust in the window light -->
+  <div class="dust" style="top: 22%; right: 18%; animation-duration: 7.2s; animation-delay: 0s;"></div>
+  <div class="dust" style="top: 28%; right: 22%; animation-duration: 9.1s; animation-delay: 1.3s;"></div>
+  <div class="dust" style="top: 18%; right: 15%; animation-duration: 8.4s; animation-delay: 2.8s;"></div>
+  <div class="dust" style="top: 35%; right: 20%; animation-duration: 6.8s; animation-delay: 0.7s;"></div>
+  <div class="dust" style="top: 25%; right: 25%; animation-duration: 10.2s; animation-delay: 3.5s;"></div>
+
+</div>
+
+<script>
+// The clock advances. One minute every 30 seconds.
+// The kitchen will move through morning.
+// You can see it happen. Nothing is hidden.
+
+const clock = document.getElementById('clock');
+let hours = 6;
+let minutes = 47;
+
+setInterval(() => {
+  minutes++;
+  if (minutes >= 60) {
+    minutes = 0;
+    hours++;
+    if (hours >= 24) hours = 0;
+  }
+  clock.textContent = hours + ':' + String(minutes).padStart(2, '0');
+}, 30000);
+</script>
+</body>
+</html>
