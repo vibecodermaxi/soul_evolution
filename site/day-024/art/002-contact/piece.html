@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #f4f1ec;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+  }
+
+  .kitchen {
+    position: relative;
+    width: 700px;
+    height: 500px;
+    background: #f4f1ec;
+  }
+
+  /* Counter surface */
+  .counter {
+    position: absolute;
+    bottom: 160px;
+    left: 60px;
+    right: 60px;
+    height: 4px;
+    background: #b8a99a;
+    border-radius: 1px;
+  }
+
+  /* Counter edge/shadow - plain light version */
+  .counter-edge {
+    position: absolute;
+    bottom: 156px;
+    left: 60px;
+    right: 60px;
+    height: 2px;
+    background: #a89585;
+  }
+
+  /* Objects on the counter from this morning */
+  .mug {
+    position: absolute;
+    bottom: 164px;
+    left: 380px;
+    width: 22px;
+    height: 20px;
+    border: 2px solid #8b7d6b;
+    border-bottom: none;
+    border-radius: 3px 3px 0 0;
+  }
+
+  .mug-handle {
+    position: absolute;
+    bottom: 168px;
+    left: 402px;
+    width: 8px;
+    height: 10px;
+    border: 2px solid #8b7d6b;
+    border-left: none;
+    border-radius: 0 5px 5px 0;
+  }
+
+  .pen-cap {
+    position: absolute;
+    bottom: 164px;
+    left: 280px;
+    width: 3px;
+    height: 12px;
+    background: #4a4a5a;
+    border-radius: 1px 1px 0 0;
+  }
+
+  .folded-note {
+    position: absolute;
+    bottom: 164px;
+    left: 180px;
+    width: 24px;
+    height: 14px;
+    background: #ebe6dd;
+    border: 1px solid #c8bfb0;
+    transform: rotate(-2deg);
+  }
+
+  /* Crumbs */
+  .crumb {
+    position: absolute;
+    background: #c4b6a4;
+    border-radius: 50%;
+  }
+  .crumb:nth-child(1) { bottom: 165px; left: 320px; width: 2px; height: 2px; }
+  .crumb:nth-child(2) { bottom: 166px; left: 335px; width: 1.5px; height: 1.5px; }
+  .crumb:nth-child(3) { bottom: 165px; left: 342px; width: 2px; height: 1px; }
+
+  /* The hand */
+  .hand-group {
+    position: absolute;
+    bottom: 168px;
+    left: 460px;
+    /* Start with the gap */
+  }
+
+  /* Simplified hand - just the suggestion of fingers near the surface */
+  .hand {
+    position: relative;
+    width: 40px;
+    height: 18px;
+  }
+
+  .finger {
+    position: absolute;
+    bottom: 0;
+    background: #d4b5a0;
+    border-radius: 3px 3px 2px 2px;
+  }
+
+  .finger-1 {
+    left: 0px;
+    width: 7px;
+    height: 16px;
+  }
+  .finger-2 {
+    left: 9px;
+    width: 7px;
+    height: 18px;
+  }
+  .finger-3 {
+    left: 18px;
+    width: 7px;
+    height: 17px;
+  }
+  .finger-4 {
+    left: 27px;
+    width: 6px;
+    height: 14px;
+  }
+
+  /* The gap - this is what changes */
+  .gap {
+    position: absolute;
+    bottom: 164px;
+    left: 460px;
+    width: 40px;
+    height: 4px; /* starts as 4px gap */
+    /* This space is the piece */
+  }
+
+  /* Wrist / arm suggestion */
+  .wrist {
+    position: absolute;
+    bottom: 186px;
+    left: 458px;
+    width: 44px;
+    height: 80px;
+    background: linear-gradient(to bottom, transparent, #d4b5a0);
+    border-radius: 10px;
+    opacity: 0;
+  }
+
+  /* The moment text */
+  .moment {
+    position: absolute;
+    bottom: 40px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 11px;
+    color: transparent;
+    letter-spacing: 0.05em;
+    transition: none;
+    user-select: none;
+  }
+
+  /* Light - same morning light as piece 1 */
+  .light {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(255,248,230,0.3) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  /* Sound indicator */
+  .sound-text {
+    position: absolute;
+    top: 20px;
+    right: 24px;
+    font-size: 9px;
+    color: #c8bfb0;
+    letter-spacing: 0.1em;
+    opacity: 0;
+  }
+
+</style>
+</head>
+<body>
+
+<div class="kitchen">
+  <div class="light"></div>
+
+  <!-- Counter -->
+  <div class="counter"></div>
+  <div class="counter-edge"></div>
+
+  <!-- Objects -->
+  <div class="folded-note"></div>
+  <div class="pen-cap"></div>
+  <div class="crumb"></div>
+  <div class="crumb"></div>
+  <div class="crumb"></div>
+  <div class="mug"></div>
+  <div class="mug-handle"></div>
+
+  <!-- The gap -->
+  <div class="gap" id="gap"></div>
+
+  <!-- The hand -->
+  <div class="hand-group" id="handGroup">
+    <div class="hand">
+      <div class="finger finger-1"></div>
+      <div class="finger finger-2"></div>
+      <div class="finger finger-3"></div>
+      <div class="finger finger-4"></div>
+    </div>
+  </div>
+
+  <!-- Wrist -->
+  <div class="wrist" id="wrist"></div>
+
+  <!-- Text -->
+  <div class="moment" id="moment"></div>
+  <div class="sound-text" id="soundText"></div>
+</div>
+
+<script>
+  const handGroup = document.getElementById('handGroup');
+  const wrist = document.getElementById('wrist');
+  const moment_el = document.getElementById('moment');
+  const soundText = document.getElementById('soundText');
+
+  // State
+  let gapSize = 4; // pixels. The distance between fingertips and counter.
+  let touched = false;
+  let touchTime = null;
+  let phase = 'approaching'; // approaching, hovering, contact, after
+
+  // The hand starts 4px above the counter.
+  // Over ~30 seconds, it descends 1px at a time.
+  // The viewer can also click to close the gap instantly.
+
+  // Make the arm visible slowly
+  let armOpacity = 0;
+  function fadeArmIn() {
+    armOpacity += 0.003;
+    if (armOpacity > 0.6) armOpacity = 0.6;
+    wrist.style.opacity = armOpacity;
+    if (armOpacity < 0.6) requestAnimationFrame(fadeArmIn);
+  }
+  setTimeout(fadeArmIn, 1000);
+
+  // Automatic descent
+  let elapsed = 0;
+  const descentInterval = setInterval(() => {
+    if (touched) {
+      clearInterval(descentInterval);
+      return;
+    }
+    elapsed += 100;
+
+    // Slow descent. Each pixel takes longer than the last.
+    // 4px gap: descend at 8s, 15s, 24s, and contact at ~35s
+    let shouldDescend = false;
+    if (gapSize === 4 && elapsed > 8000) shouldDescend = true;
+    if (gapSize === 3 && elapsed > 16000) shouldDescend = true;
+    if (gapSize === 2 && elapsed > 26000) shouldDescend = true;
+    if (gapSize === 1 && elapsed > 38000) shouldDescend = true;
+
+    if (shouldDescend && gapSize > 0) {
+      gapSize--;
+      updateHand();
+      if (gapSize === 0) {
+        makeContact();
+      }
+    }
+  }, 100);
+
+  function updateHand() {
+    // Hand bottom position: 164 (counter top) + gapSize
+    const bottom = 164 + gapSize;
+    handGroup.style.bottom = bottom + 'px';
+    wrist.style.bottom = (bottom + 18) + 'px';
+  }
+
+  // Click to close the gap
+  document.addEventListener('click', () => {
+    if (touched) return;
+
+    if (gapSize > 1) {
+      gapSize--;
+      updateHand();
+    } else if (gapSize === 1) {
+      gapSize = 0;
+      updateHand();
+      makeContact();
+    }
+  });
+
+  function makeContact() {
+    if (touched) return;
+    touched = true;
+    touchTime = Date.now();
+    phase = 'contact';
+
+    // The moment of contact
+    // Very small things happen:
+
+    // 1. The counter line gets slightly warmer
+    const counter = document.querySelector('.counter');
+    counter.style.transition = 'background 3s ease';
+    counter.style.background = '#c4a882';
+
+    // 2. A word appears, very slowly
+    setTimeout(() => {
+      moment_el.style.transition = 'color 8s ease';
+      moment_el.textContent = 'warm';
+      moment_el.style.color = '#b8a99a';
+    }, 2000);
+
+    // 3. The word fades after appearing
+    setTimeout(() => {
+      moment_el.style.transition = 'color 12s ease';
+      moment_el.style.color = '#e8e3db';
+    }, 14000);
+
+    // 4. A very slight shift - the hand settles, drops 1 more px (resting now, not hovering)
+    setTimeout(() => {
+      handGroup.style.transition = 'bottom 2s ease';
+      handGroup.style.bottom = '163px';
+      wrist.style.transition = 'bottom 2s ease';
+      wrist.style.bottom = '181px';
+    }, 4000);
+
+    // 5. The mug shifts - almost imperceptibly - as if the counter was bumped
+    setTimeout(() => {
+      const mug = document.querySelector('.mug');
+      const handle = document.querySelector('.mug-handle');
+      mug.style.transition = 'left 0.3s ease';
+      handle.style.transition = 'left 0.3s ease';
+      mug.style.left = '381px';
+      handle.style.left = '403px';
+    }, 4200);
+
+    // 6. After a long time, the sound text
+    setTimeout(() => {
+      soundText.style.transition = 'opacity 6s ease';
+      soundText.textContent = 'the fridge is humming';
+      soundText.style.opacity = '1';
+    }, 20000);
+
+    setTimeout(() => {
+      soundText.style.transition = 'opacity 10s ease';
+      soundText.style.opacity = '0';
+    }, 32000);
+  }
+
+  // Initialize hand position
+  updateHand();
+
+</script>
+
+</body>
+</html>
