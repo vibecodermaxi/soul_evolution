@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    background: #f4f1eb;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+    font-family: Georgia, 'Times New Roman', serif;
+  }
+
+  #scene {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* The counter surface — visible, warm, plain light */
+  #counter {
+    position: absolute;
+    bottom: 38%;
+    left: 10%;
+    right: 10%;
+    height: 4px;
+    background: #8b7355;
+    border-radius: 1px;
+  }
+
+  /* Counter surface texture — the top plane */
+  #counter-surface {
+    position: absolute;
+    bottom: 38%;
+    left: 10%;
+    right: 10%;
+    height: 48px;
+    background: linear-gradient(180deg, #c4a882 0%, #b89b72 60%, #8b7355 100%);
+    border-radius: 1px 1px 0 0;
+    z-index: 1;
+  }
+
+  /* The hand — starts hovering above the counter */
+  #hand {
+    position: absolute;
+    z-index: 10;
+    /* hand is a simple shape — not symbolic, just present */
+  }
+
+  #hand-shape {
+    width: 38px;
+    height: 22px;
+    background: #d4a574;
+    border-radius: 12px 12px 6px 6px;
+    position: relative;
+    box-shadow: 0 2px 8px rgba(80, 50, 20, 0.08);
+    transition: box-shadow 0.8s ease;
+  }
+
+  /* Fingers — four small extensions */
+  .finger {
+    position: absolute;
+    top: -6px;
+    width: 7px;
+    height: 8px;
+    background: #d4a574;
+    border-radius: 4px 4px 1px 1px;
+  }
+  .finger:nth-child(1) { left: 3px; height: 7px; }
+  .finger:nth-child(2) { left: 11px; height: 9px; }
+  .finger:nth-child(3) { left: 19px; height: 8px; }
+  .finger:nth-child(4) { left: 27px; height: 6px; }
+
+  /* Thumb */
+  .thumb {
+    position: absolute;
+    top: 4px;
+    left: -5px;
+    width: 7px;
+    height: 12px;
+    background: #d4a574;
+    border-radius: 4px;
+    transform: rotate(20deg);
+  }
+
+  /* The gap indicator — the warm space between */
+  #gap-text {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: #8b7355;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+    transition: opacity 1.2s ease;
+    pointer-events: none;
+  }
+
+  /* Morning light — visible, not dim */
+  #light {
+    position: absolute;
+    top: 0;
+    left: 20%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(180deg, 
+      rgba(255, 248, 230, 0.3) 0%, 
+      rgba(255, 248, 230, 0.08) 40%,
+      transparent 70%
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Sound indicator */
+  #sound-note {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    color: #b0a08a;
+    letter-spacing: 0.12em;
+    opacity: 0;
+    transition: opacity 2s ease;
+    pointer-events: none;
+  }
+
+  /* The moment text — appears on contact */
+  #contact-text {
+    position: absolute;
+    left: 50%;
+    bottom: 22%;
+    transform: translateX(-50%);
+    font-size: 12px;
+    color: #8b7355;
+    letter-spacing: 0.05em;
+    opacity: 0;
+    transition: opacity 2s ease;
+    pointer-events: none;
+    text-align: center;
+    line-height: 1.8;
+  }
+
+  /* Temperature reading */
+  #temp {
+    position: absolute;
+    top: 20px;
+    right: 24px;
+    font-size: 10px;
+    color: #b0a08a;
+    letter-spacing: 0.1em;
+    pointer-events: none;
+  }
+
+</style>
+</head>
+<body>
+
+<div id="scene">
+  <div id="light"></div>
+  <div id="counter-surface"></div>
+  <div id="counter"></div>
+  
+  <div id="hand">
+    <div id="hand-shape">
+      <div class="finger"></div>
+      <div class="finger"></div>
+      <div class="finger"></div>
+      <div class="finger"></div>
+      <div class="thumb"></div>
+    </div>
+  </div>
+
+  <div id="gap-text"></div>
+  <div id="contact-text"></div>
+  <div id="sound-note"></div>
+  <div id="temp"></div>
+</div>
+
+<script>
+(function() {
+  const hand = document.getElementById('hand');
+  const handShape = document.getElementById('hand-shape');
+  const gapText = document.getElementById('gap-text');
+  const contactText = document.getElementById('contact-text');
+  const soundNote = document.getElementById('sound-note');
+  const temp = document.getElementById('temp');
+  const counter = document.getElementById('counter');
+  
+  const scene = document.getElementById('scene');
+  const sceneRect = () => scene.getBoundingClientRect();
+  
+  // Counter position
+  const counterTop = () => {
+    const r = counter.getBoundingClientRect();
+    return r.top;
+  };
+  
+  // Hand starts hovering — 8px gap
+  let gap = 8; // millimeters in the metaphor, pixels in the screen
+  let touching = false;
+  let hasBeenTouched = false;
+  let descended = false;
+  
+  // Audio context — room sounds, not composed
+  let audioCtx = null;
+  let fridgeNode = null;
+  let started = false;
+  
+  function initAudio() {
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // Fridge hum — just the fridge. Not six layers. Just what's in the room.
+    const bufferSize = 2 * audioCtx.sampleRate;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    
+    // Low hum, ~120Hz with slight variation
+    for (let i = 0; i < bufferSize; i++) {
+      const t = i / audioCtx.sampleRate;
+      data[i] = (
+        Math.sin(2 * Math.PI * 120 * t) * 0.015 +
+        Math.sin(2 * Math.PI * 180 * t) * 0.008 +
+        Math.sin(2 * Math.PI * 60 * t) * 0.01 +
+        (Math.random() - 0.5) * 0.004
+      );
+    }
+    
+    fridgeNode = audioCtx.createBufferSource();
+    fridgeNode.buffer = buffer;
+    fridgeNode.loop = true;
+    
+    const gain = audioCtx.createGain();
+    gain.gain.value = 0;
+    
+    fridgeNode.connect(gain);
+    gain.connect(audioCtx.destination);
+    fridgeNode.start();
+    
+    // Fade in over 3 seconds
+    gain.gain.linearRampToValueAtTime(0.35, audioCtx.currentTime + 3);
+    
+    soundNote.textContent = 'fridge';
+    soundNote.style.opacity = '0.6';
+    
+    // Fade the label
+    setTimeout(() => {
+      soundNote.style.opacity = '0';
+    }, 5000);
+  }
+  
+  // Position the hand
+  function positionHand() {
+    const sr = sceneRect();
+    const ct = counterTop();
+    const relTop = ct - sr.top;
+    
+    // Hand bottom edge is `gap` pixels above counter
+    const handHeight = 28; // approximate
+    hand.style.left = (sr.width * 0.48) + 'px';
+    hand.style.top = (relTop - gap - handHeight) + 'px';
+    
+    // Gap measurement display
+    if (!touching) {
+      const mm = Math.max(0, Math.round(gap * 0.26 * 10) / 10); // rough px to mm
+      if (gap > 1) {
+        gapText.textContent = mm.toFixed(1) + ' mm';
+        gapText.style.top = (relTop - gap/2 - 6) + 'px';
+        gapText.style.opacity = gap > 3 ? '0.5' : String(gap / 8);
+      } else {
+        gapText.style.opacity = '0';
+      }
+    }
+  }
+  
+  // The descent — slow, over 30 seconds
+  function beginDescent() {
+    if (descended) return;
+    descended = true;
+    
+    const startGap = gap;
+    const duration = 30000; // 30 seconds
+    const startTime = performance.now();
+    
+    function descend(now) {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // Ease out — slows as it approaches
+      // The last millimeter takes longest
+      const eased = 1 - Math.pow(1 - progress, 3);
+      
+      gap = startGap * (1 - eased);
+      
+      if (gap <= 0.3 && !touching) {
+        // Contact
+        gap = 0;
+        touching = true;
+        onContact();
+      }
+      
+      positionHand();
+      
+      if (!touching) {
+        requestAnimationFrame(descend);
+      }
+    }
+    
+    requestAnimationFrame(descend);
+  }
+  
+  function onContact() {
+    hasBeenTouched = true;
+    gapText.style.opacity = '0';
+    
+    // The hand settles — shadow changes
+    handShape.style.boxShadow = '0 0px 3px rgba(80, 50, 20, 0.12)';
+    
+    // Temperature transfer
+    setTimeout(() => {
+      temp.textContent = '98.6°F → surface';
+      setTimeout(() => {
+        temp.textContent = '91.2°F';
+        setTimeout(() => {
+          temp.textContent = '94.9°F — shared';
+        }, 3000);
+      }, 2000);
+    }, 1500);
+    
+    // The text
+    setTimeout(() => {
+      contactText.innerHTML = 'cool laminate<br>warming';
+      contactText.style.opacity = '0.7';
+    }, 2000);
+    
+    setTimeout(() => {
+      contactText.innerHTML = 'cool laminate<br>warming<br><br>this is all it was';
+      contactText.style.opacity = '0.7';
+    }, 8000);
+  }
+  
+  // Temperature display — body temp
+  temp.textContent = '98.6°F';
+  
+  // Initial position
+  window.addEventListener('resize', positionHand);
+  positionHand();
+  
+  // Start on first interaction — any click or touch
+  function start() {
+    if (started) return;
+    started = true;
+    initAudio();
+    beginDescent();
+    document.removeEventListener('click', start);
+    document.removeEventListener('touchstart', start);
+  }
+  
+  document.addEventListener('click', start);
+  document.addEventListener('touchstart', start);
+  
+  // Also start after 5 seconds of just watching
+  setTimeout(() => {
+    if (!started) {
+      started = true;
+      // No audio without interaction — but the descent can begin
+      beginDescent();
+    }
+  }, 5000);
+  
+  // Initial gap display
+  positionHand();
+  
+  // Slight breathing movement while hovering — not composed, not twelve per minute
+  // Just: a hand hovers with the body's slight movement
+  let breathOffset = 0;
+  let baseGap = gap;
+  
+  function breathe(now) {
+    if (touching) return;
+    // Irregular, not composed — somewhere between 14 and 18 breaths per minute
+    // because this is a body standing in a kitchen, not a meditation
+    const rate = 0.24; // ~14.4 per minute
+    breathOffset = Math.sin(now * rate * 0.001 * Math.PI * 2) * 0.4;
+    
+    const sr = sceneRect();
+    const ct = counterTop();
+    const relTop = ct - sr.top;
+    const handHeight = 28;
+    hand.style.top = (relTop - gap - handHeight + breathOffset) + 'px';
+    
+    requestAnimationFrame(breathe);
+  }
+  
+  requestAnimationFrame(breathe);
+  
+})();
+</script>
+
+</body>
+</html>
