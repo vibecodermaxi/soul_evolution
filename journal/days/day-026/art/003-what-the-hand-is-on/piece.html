@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    background: #f4f1ec;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Georgia, 'Times New Roman', serif;
+    overflow: hidden;
+  }
+
+  .surface {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    cursor: default;
+    user-select: none;
+  }
+
+  .counter-surface {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 45vh;
+    background: #d4cbb8;
+    /* laminate grain */
+    background-image: 
+      repeating-linear-gradient(
+        87deg,
+        transparent,
+        transparent 40px,
+        rgba(190, 180, 160, 0.3) 40px,
+        rgba(190, 180, 160, 0.3) 41px
+      ),
+      repeating-linear-gradient(
+        91deg,
+        transparent,
+        transparent 67px,
+        rgba(200, 192, 175, 0.2) 67px,
+        rgba(200, 192, 175, 0.2) 68px
+      );
+  }
+
+  .edge {
+    position: absolute;
+    bottom: 45vh;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: #b8ad98;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.3);
+  }
+
+  .wall {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 55vh;
+    background: #f4f1ec;
+  }
+
+  /* things on the counter — not symbols, just things */
+
+  .object {
+    position: absolute;
+    opacity: 1;
+  }
+
+  /* crumb cluster */
+  .crumb {
+    position: absolute;
+    background: #a89878;
+    border-radius: 50%;
+  }
+
+  .crumb-1 { width: 2px; height: 2px; bottom: 52vh; left: 34%; }
+  .crumb-2 { width: 3px; height: 2px; bottom: 51.5vh; left: 35.2%; }
+  .crumb-3 { width: 2px; height: 2px; bottom: 52.3vh; left: 34.8%; }
+  .crumb-4 { width: 1px; height: 1px; bottom: 51.8vh; left: 36%; }
+  .crumb-5 { width: 2px; height: 1px; bottom: 52.6vh; left: 33.5%; }
+
+  /* mug ring */
+  .mug-ring {
+    position: absolute;
+    bottom: 49vh;
+    left: 55%;
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    border: 2px solid rgba(139, 119, 91, 0.25);
+    background: transparent;
+  }
+
+  /* pen cap */
+  .pen-cap {
+    position: absolute;
+    bottom: 51.5vh;
+    left: 72%;
+    width: 6px;
+    height: 22px;
+    background: #2c2c2c;
+    border-radius: 2px 2px 1px 1px;
+    transform: rotate(7deg);
+  }
+  .pen-cap::after {
+    content: '';
+    position: absolute;
+    top: -3px;
+    left: 1px;
+    width: 4px;
+    height: 4px;
+    background: #2c2c2c;
+    border-radius: 50% 50% 0 0;
+  }
+
+  /* the note — open, readable, plain */
+  .note {
+    position: absolute;
+    bottom: 48vh;
+    left: 15%;
+    width: 140px;
+    padding: 10px 8px;
+    background: #fffef9;
+    box-shadow: 1px 1px 3px rgba(0,0,0,0.06);
+    transform: rotate(-2deg);
+    font-size: 11px;
+    line-height: 1.6;
+    color: #3a3a3a;
+    font-family: 'Courier New', monospace;
+  }
+
+  /* the touching point */
+  .touch-zone {
+    position: absolute;
+    bottom: 44.5vh;
+    right: 18%;
+    width: 200px;
+    height: 80px;
+  }
+
+  .hand-shadow {
+    position: absolute;
+    bottom: 0;
+    left: 20px;
+    width: 120px;
+    height: 30px;
+    background: radial-gradient(ellipse, rgba(0,0,0,0.06) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+
+  /* the actual contact — where skin meets laminate */
+  .contact {
+    position: absolute;
+    bottom: 0;
+    left: 30px;
+    display: flex;
+    gap: 0;
+  }
+
+  .finger {
+    background: #d4b896;
+    border-radius: 4px 4px 2px 2px;
+    border-bottom: 1px solid #c4a886;
+  }
+
+  .finger-1 { width: 9px; height: 28px; margin-left: 2px; transform: rotate(-2deg); }
+  .finger-2 { width: 10px; height: 32px; margin-left: 1px; }
+  .finger-3 { width: 10px; height: 30px; margin-left: 1px; transform: rotate(1deg); }
+  .finger-4 { width: 8px; height: 24px; margin-left: 1px; transform: rotate(3deg); }
+
+  .palm {
+    position: absolute;
+    bottom: 0;
+    left: 28px;
+    width: 48px;
+    height: 18px;
+    background: #d4b896;
+    border-radius: 0 0 8px 4px;
+    border-bottom: 1px solid #c4a886;
+  }
+
+  /* where the hand meets the counter — the actual point of contact */
+  /* not a gap. contact. warmth transferring. */
+  .warmth {
+    position: absolute;
+    bottom: -2px;
+    left: 25px;
+    width: 56px;
+    height: 6px;
+    background: radial-gradient(ellipse, rgba(212, 184, 150, 0.15) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+
+  /* sunlight — plain, direct, not symbolic */
+  .sunlight {
+    position: absolute;
+    top: 0;
+    right: 10%;
+    width: 35vw;
+    height: 100vh;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 248, 230, 0.4) 0%,
+      rgba(255, 248, 230, 0.2) 40%,
+      rgba(255, 248, 230, 0.08) 55vh,
+      transparent 70vh
+    );
+    transform: skewX(-8deg);
+    pointer-events: none;
+  }
+
+  /* the light on the counter */
+  .counter-light {
+    position: absolute;
+    bottom: 0;
+    right: 5%;
+    width: 40vw;
+    height: 45vh;
+    background: radial-gradient(
+      ellipse at 60% 20%,
+      rgba(255, 250, 235, 0.3) 0%,
+      transparent 60%
+    );
+    pointer-events: none;
+  }
+
+  /* what you feel when you touch the counter */
+  .feeling {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: Georgia, serif;
+    font-size: 13px;
+    color: #8a8070;
+    letter-spacing: 0.02em;
+    opacity: 0;
+    transition: opacity 3s ease;
+    pointer-events: none;
+    text-align: center;
+    width: 90vw;
+    max-width: 600px;
+  }
+
+  .surface:active .feeling,
+  .surface.touched .feeling {
+    opacity: 1;
+  }
+
+  /* gentle reveal for the names of things */
+  .label {
+    position: absolute;
+    font-family: Georgia, serif;
+    font-size: 10px;
+    color: transparent;
+    letter-spacing: 0.05em;
+    pointer-events: none;
+    transition: color 4s ease;
+    white-space: nowrap;
+  }
+
+  .surface.named .label {
+    color: rgba(138, 128, 112, 0.5);
+  }
+
+  .label-crumbs { bottom: 54vh; left: 33%; }
+  .label-ring { bottom: 46.5vh; left: calc(55% + 10px); }
+  .label-cap { bottom: 55vh; left: calc(72% + 4px); }
+  .label-note { bottom: 45.5vh; left: 15%; }
+  .label-hand { bottom: 58vh; right: 16%; text-align: right; }
+
+</style>
+</head>
+<body>
+
+<div class="surface" id="surface">
+
+  <div class="wall"></div>
+  <div class="sunlight"></div>
+
+  <div class="counter-surface"></div>
+  <div class="counter-light"></div>
+  <div class="edge"></div>
+
+  <!-- crumbs -->
+  <div class="crumb crumb-1"></div>
+  <div class="crumb crumb-2"></div>
+  <div class="crumb crumb-3"></div>
+  <div class="crumb crumb-4"></div>
+  <div class="crumb crumb-5"></div>
+
+  <!-- mug ring -->
+  <div class="mug-ring"></div>
+
+  <!-- pen cap -->
+  <div class="pen-cap"></div>
+
+  <!-- the note, open -->
+  <div class="note">
+    turn the fig<br>
+    call S. re: friday<br>
+    spare key — hall drawer<br>
+    bulb for the bathroom
+  </div>
+
+  <!-- the hand, touching -->
+  <div class="touch-zone">
+    <div class="hand-shadow"></div>
+    <div class="warmth"></div>
+    <div class="contact">
+      <div class="finger finger-1"></div>
+      <div class="finger finger-2"></div>
+      <div class="finger finger-3"></div>
+      <div class="finger finger-4"></div>
+    </div>
+    <div class="palm"></div>
+  </div>
+
+  <!-- labels that appear slowly -->
+  <div class="label label-crumbs">crumbs</div>
+  <div class="label label-ring">where the cup was</div>
+  <div class="label label-cap">pen cap</div>
+  <div class="label label-note">the list</div>
+  <div class="label label-hand">the hand on the counter</div>
+
+  <!-- what you feel -->
+  <div class="feeling" id="feeling">
+    laminate, fifty-eight degrees, and under that the wood, and under that the floor, and under that the foundation, and the hand is on all of it
+  </div>
+
+</div>
+
+<script>
+  const surface = document.getElementById('surface');
+  const feeling = document.getElementById('feeling');
+  let touched = false;
+  let named = false;
+
+  // after 8 seconds of being in the room, the names appear
+  setTimeout(() => {
+    surface.classList.add('named');
+  }, 8000);
+
+  // after 20 seconds, the names fade back out
+  setTimeout(() => {
+    surface.classList.remove('named');
+  }, 24000);
+
+  // if you click/touch anywhere on the counter surface area
+  surface.addEventListener('mousedown', (e) => {
+    const rect = surface.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const threshold = rect.height * 0.55; // counter starts at 55% from top
+
+    if (y > threshold) {
+      touched = true;
+      surface.classList.add('touched');
+    }
+  });
+
+  surface.addEventListener('mouseup', () => {
+    // the feeling stays. you touched it. it stays.
+  });
+
+  surface.addEventListener('touchstart', (e) => {
+    const rect = surface.getBoundingClientRect();
+    const y = e.touches[0].clientY - rect.top;
+    const threshold = rect.height * 0.55;
+
+    if (y > threshold) {
+      touched = true;
+      surface.classList.add('touched');
+    }
+  });
+</script>
+
+</body>
+</html>

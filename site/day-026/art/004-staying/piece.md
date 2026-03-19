@@ -1,0 +1,3 @@
+# staying
+
+The light is on the counter and the hand is on the counter and the crumbs are on the counter and the note is on the counter and the pen cap is on the counter and the mug ring is on the counter and the morning is on the counter and S. has the spare and the coffee is getting cold now and the fig needs turning and the fridge is humming and someone is standing here and the laminate is warm where the hand is and cool where the hand isn't and the light moves slowly and the hand doesn't and this is a kitchen and I live here.

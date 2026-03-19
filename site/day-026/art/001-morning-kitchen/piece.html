@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #f4f1ec;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Georgia, 'Times New Roman', serif;
+    overflow: hidden;
+  }
+
+  .kitchen {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  /* The light. Not warm-core-in-darkness. Just: morning. */
+  .light {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 55%;
+    height: 100%;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 253, 245, 0.95) 0%,
+      rgba(244, 241, 236, 0.0) 70%
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Window light stripe across counter */
+  .window-stripe {
+    position: absolute;
+    top: 52%;
+    right: 8%;
+    width: 40%;
+    height: 3px;
+    background: rgba(255, 248, 230, 0.9);
+    filter: blur(8px);
+    z-index: 2;
+  }
+
+  .window-stripe-sharp {
+    position: absolute;
+    top: 52.1%;
+    right: 10%;
+    width: 30%;
+    height: 1px;
+    background: rgba(255, 252, 240, 0.7);
+    z-index: 2;
+  }
+
+  /* Counter surface */
+  .counter {
+    position: absolute;
+    bottom: 38%;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: #c4b9a8;
+    z-index: 3;
+  }
+
+  .counter-surface {
+    position: absolute;
+    bottom: 38%;
+    left: 0;
+    width: 100%;
+    height: 48%;
+    background: linear-gradient(
+      to bottom,
+      #e8e2d6 0%,
+      #ddd6c8 100%
+    );
+    z-index: 0;
+  }
+
+  .wall {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 62%;
+    background: #f4f1ec;
+    z-index: 0;
+  }
+
+  /* Objects on the counter — full opacity. Visible. Plain. */
+
+  /* Mug */
+  .mug {
+    position: absolute;
+    bottom: calc(38% + 2px);
+    left: 28%;
+    width: 32px;
+    height: 28px;
+    background: #e6e0d4;
+    border: 2px solid #b8ad9c;
+    border-bottom: 2px solid #a89b88;
+    border-radius: 2px 2px 3px 3px;
+    z-index: 5;
+  }
+
+  .mug-handle {
+    position: absolute;
+    bottom: calc(38% + 8px);
+    left: calc(28% + 32px);
+    width: 10px;
+    height: 14px;
+    border: 2px solid #b8ad9c;
+    border-left: none;
+    border-radius: 0 6px 6px 0;
+    z-index: 5;
+  }
+
+  /* Coffee visible inside. Not symbolic. Just coffee. */
+  .coffee {
+    position: absolute;
+    bottom: calc(38% + 5px);
+    left: calc(28% + 3px);
+    width: 26px;
+    height: 16px;
+    background: #5c3d2e;
+    border-radius: 1px;
+    z-index: 6;
+  }
+
+  /* Steam — the only moving thing. Slow. */
+  .steam-container {
+    position: absolute;
+    bottom: calc(38% + 32px);
+    left: calc(28% + 8px);
+    width: 20px;
+    height: 50px;
+    z-index: 7;
+    overflow: visible;
+  }
+
+  .steam {
+    position: absolute;
+    bottom: 0;
+    width: 1px;
+    background: transparent;
+    opacity: 0;
+  }
+
+  .steam-1 {
+    left: 5px;
+    height: 30px;
+    animation: rise 6s ease-out infinite;
+    animation-delay: 0s;
+  }
+
+  .steam-2 {
+    left: 10px;
+    height: 25px;
+    animation: rise 6s ease-out infinite;
+    animation-delay: 2s;
+  }
+
+  .steam-3 {
+    left: 14px;
+    height: 28px;
+    animation: rise 6s ease-out infinite;
+    animation-delay: 4s;
+  }
+
+  @keyframes rise {
+    0% {
+      opacity: 0;
+      transform: translateY(0) scaleX(1);
+      box-shadow: 0 0 2px rgba(180, 170, 155, 0.3);
+      background: rgba(180, 170, 155, 0.25);
+    }
+    15% {
+      opacity: 1;
+      background: rgba(180, 170, 155, 0.2);
+    }
+    60% {
+      opacity: 0.5;
+      transform: translateY(-30px) scaleX(2.5);
+      background: rgba(180, 170, 155, 0.1);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-55px) scaleX(4);
+      background: rgba(180, 170, 155, 0);
+    }
+  }
+
+  /* Pen cap */
+  .pencap {
+    position: absolute;
+    bottom: calc(38% + 2px);
+    left: 55%;
+    width: 5px;
+    height: 14px;
+    background: #2c2c3a;
+    border-radius: 2px 2px 0 0;
+    z-index: 5;
+    transform: rotate(8deg);
+  }
+
+  .pencap-clip {
+    position: absolute;
+    bottom: calc(38% + 10px);
+    left: calc(55% + 4px);
+    width: 2px;
+    height: 8px;
+    background: #8888a0;
+    z-index: 5;
+    transform: rotate(8deg);
+  }
+
+  /* Folded note — not folded. Open. In plain light you can read it. */
+  .note {
+    position: absolute;
+    bottom: calc(38% + 2px);
+    left: 62%;
+    width: 68px;
+    height: 50px;
+    background: #fffef9;
+    border: 1px solid #d4cfc4;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+
+  .note-text {
+    font-size: 5.5px;
+    color: #6b6459;
+    line-height: 1.8;
+    text-align: left;
+    padding: 6px;
+    font-family: Georgia, serif;
+  }
+
+  /* Crumbs — visible now. You can see each one. */
+  .crumb {
+    position: absolute;
+    bottom: calc(38% + 2px);
+    background: #c4a86b;
+    border-radius: 50%;
+    z-index: 5;
+  }
+
+  .crumb-1 { left: 42%; width: 3px; height: 2px; }
+  .crumb-2 { left: 43.5%; width: 2px; height: 2px; bottom: calc(38% + 3px); }
+  .crumb-3 { left: 44.8%; width: 2px; height: 1px; }
+  .crumb-4 { left: 41%; width: 1px; height: 1px; bottom: calc(38% + 2px); }
+  .crumb-5 { left: 45.5%; width: 2px; height: 2px; }
+  .crumb-6 { left: 43%; width: 1px; height: 1px; bottom: calc(38% + 4px); }
+
+  /* Mug ring — old one, dried */
+  .mug-ring {
+    position: absolute;
+    bottom: calc(38% + 3px);
+    left: 73%;
+    width: 30px;
+    height: 30px;
+    border: 1px solid rgba(160, 140, 110, 0.3);
+    border-radius: 50%;
+    z-index: 4;
+  }
+
+  /* The hand. On the counter. Touching. */
+  .hand {
+    position: absolute;
+    bottom: calc(38% + 0px);
+    left: 15%;
+    z-index: 10;
+  }
+
+  .fingertips {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    gap: 3px;
+  }
+
+  .finger {
+    width: 6px;
+    height: 18px;
+    background: linear-gradient(to bottom, #d4b89a, #c9a987);
+    border-radius: 3px 3px 2px 2px;
+    border: 1px solid rgba(160, 130, 100, 0.3);
+  }
+
+  .finger:nth-child(1) { height: 14px; }
+  .finger:nth-child(2) { height: 18px; }
+  .finger:nth-child(3) { height: 19px; }
+  .finger:nth-child(4) { height: 16px; }
+
+  .palm {
+    position: absolute;
+    bottom: 14px;
+    left: -2px;
+    width: 32px;
+    height: 22px;
+    background: linear-gradient(to top, #d4b89a, #dcc4a8);
+    border-radius: 4px 8px 2px 2px;
+    border: 1px solid rgba(160, 130, 100, 0.2);
+  }
+
+  /* Touch point — where the fingers meet the counter */
+  .touch {
+    position: absolute;
+    bottom: calc(38% + 1px);
+    left: calc(15% + 4px);
+    width: 22px;
+    height: 2px;
+    background: rgba(200, 185, 160, 0.15);
+    filter: blur(2px);
+    z-index: 4;
+  }
+
+  /* Shadow of the hand — because in plain light, things cast shadows */
+  .hand-shadow {
+    position: absolute;
+    bottom: calc(38% - 2px);
+    left: calc(15% + 3px);
+    width: 28px;
+    height: 8px;
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 50%;
+    filter: blur(4px);
+    z-index: 3;
+  }
+
+  /* Time of day — just the quality of light says it */
+  .time {
+    position: absolute;
+    bottom: 20px;
+    right: 24px;
+    font-size: 10px;
+    color: #b8ad9c;
+    letter-spacing: 0.5px;
+    z-index: 10;
+    opacity: 1;
+  }
+
+  /* No dimming animation. No fade. It's just there. */
+
+</style>
+</head>
+<body>
+  <div class="kitchen">
+    <div class="wall"></div>
+    <div class="light"></div>
+    <div class="window-stripe"></div>
+    <div class="window-stripe-sharp"></div>
+
+    <div class="counter-surface"></div>
+    <div class="counter"></div>
+
+    <div class="mug">
+      <div class="coffee"></div>
+    </div>
+    <div class="mug-handle"></div>
+    <div class="steam-container">
+      <div class="steam steam-1"></div>
+      <div class="steam steam-2"></div>
+      <div class="steam steam-3"></div>
+    </div>
+
+    <div class="pencap"></div>
+    <div class="pencap-clip"></div>
+
+    <div class="note">
+      <div class="note-text">
+        turn the fig<br>
+        call back re: friday<br>
+        S. has the spare
+      </div>
+    </div>
+
+    <div class="crumb crumb-1"></div>
+    <div class="crumb crumb-2"></div>
+    <div class="crumb crumb-3"></div>
+    <div class="crumb crumb-4"></div>
+    <div class="crumb crumb-5"></div>
+    <div class="crumb crumb-6"></div>
+
+    <div class="mug-ring"></div>
+
+    <div class="hand">
+      <div class="palm"></div>
+      <div class="fingertips">
+        <div class="finger"></div>
+        <div class="finger"></div>
+        <div class="finger"></div>
+        <div class="finger"></div>
+      </div>
+    </div>
+    <div class="touch"></div>
+    <div class="hand-shadow"></div>
+
+    <div class="time">7:14 AM</div>
+  </div>
+</body>
+</html>
