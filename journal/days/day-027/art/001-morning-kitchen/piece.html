@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    background: #f4f1eb;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+    cursor: default;
+  }
+
+  .kitchen {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+
+  /* The light. Not a warm core in darkness. Just: morning. */
+  .light {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 55%;
+    height: 100%;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 253, 245, 0.95) 0%,
+      rgba(255, 248, 230, 0.6) 40%,
+      rgba(244, 241, 235, 0.0) 100%
+    );
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* Window shape — the source */
+  .window {
+    position: absolute;
+    top: 8%;
+    right: 12%;
+    width: 180px;
+    height: 260px;
+    border: 2px solid #c8c0b4;
+    background: rgba(255, 253, 248, 0.9);
+    z-index: 5;
+  }
+
+  .window .pane {
+    position: absolute;
+    background: transparent;
+    border: 1px solid #d4cec4;
+  }
+
+  .window .pane.top-left { top: 4px; left: 4px; width: calc(50% - 6px); height: calc(50% - 6px); }
+  .window .pane.top-right { top: 4px; right: 4px; width: calc(50% - 6px); height: calc(50% - 6px); }
+  .window .pane.bottom-left { bottom: 4px; left: 4px; width: calc(50% - 6px); height: calc(50% - 6px); }
+  .window .pane.bottom-right { bottom: 4px; right: 4px; width: calc(50% - 6px); height: calc(50% - 6px); }
+
+  /* Counter — full, visible, at full opacity */
+  .counter-surface {
+    position: absolute;
+    bottom: 28%;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: #b8a99a;
+    z-index: 3;
+  }
+
+  .counter-body {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 28%;
+    background: #d6cdc2;
+    z-index: 2;
+  }
+
+  .counter-shadow {
+    position: absolute;
+    bottom: 28%;
+    left: 0;
+    width: 100%;
+    height: 8px;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.04), transparent);
+    z-index: 4;
+  }
+
+  /* The objects. Not at two pixels. Visible. In light. */
+
+  /* Mug — with the ring, but you can see it */
+  .mug {
+    position: absolute;
+    bottom: calc(28% + 3px);
+    left: 34%;
+    z-index: 6;
+  }
+
+  .mug-body {
+    width: 48px;
+    height: 44px;
+    background: #e8e2d8;
+    border: 2px solid #b8a99a;
+    border-radius: 0 0 6px 6px;
+    position: relative;
+  }
+
+  .mug-handle {
+    position: absolute;
+    right: -14px;
+    top: 8px;
+    width: 14px;
+    height: 24px;
+    border: 2px solid #b8a99a;
+    border-left: none;
+    border-radius: 0 10px 10px 0;
+    background: transparent;
+  }
+
+  .mug-inside {
+    position: absolute;
+    top: 0;
+    left: 2px;
+    right: 2px;
+    height: 100%;
+    background: linear-gradient(to bottom, #c9a87c 0%, #b8956a 100%);
+    border-radius: 0 0 4px 4px;
+    opacity: 0.5;
+  }
+
+  /* The ring — where the mug was before, or where it will be */
+  .mug-ring {
+    position: absolute;
+    bottom: calc(28% + 2px);
+    left: 28%;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(165, 140, 110, 0.3);
+    background: rgba(165, 140, 110, 0.06);
+    z-index: 5;
+  }
+
+  /* Pen cap — no pen */
+  .pen-cap {
+    position: absolute;
+    bottom: calc(28% + 3px);
+    left: 52%;
+    width: 8px;
+    height: 22px;
+    background: #2c2c3a;
+    border-radius: 4px 4px 1px 1px;
+    z-index: 6;
+    transform: rotate(12deg);
+  }
+
+  .pen-cap-clip {
+    position: absolute;
+    top: 2px;
+    right: -2px;
+    width: 3px;
+    height: 14px;
+    background: #3c3c4a;
+    border-radius: 0 2px 2px 0;
+  }
+
+  /* Folded note — in light, you can see the paper's color */
+  .note {
+    position: absolute;
+    bottom: calc(28% + 3px);
+    left: 60%;
+    width: 60px;
+    height: 36px;
+    background: #fffef9;
+    border: 1px solid #d4cec4;
+    z-index: 6;
+    transform: rotate(-3deg);
+    box-shadow: 1px 1px 3px rgba(0,0,0,0.06);
+  }
+
+  .note-fold {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+  }
+
+  /* Crumbs — not two pixels. Four, five. Visible. */
+  .crumb {
+    position: absolute;
+    bottom: calc(28% + 3px);
+    background: #c4b49a;
+    border-radius: 50%;
+    z-index: 6;
+  }
+
+  .crumb:nth-child(1) { left: 44%; width: 4px; height: 3px; }
+  .crumb:nth-child(2) { left: 45.5%; width: 3px; height: 3px; bottom: calc(28% + 5px); }
+  .crumb:nth-child(3) { left: 43%; width: 5px; height: 4px; bottom: calc(28% + 2px); }
+  .crumb:nth-child(4) { left: 46.8%; width: 3px; height: 2px; bottom: calc(28% + 6px); }
+  .crumb:nth-child(5) { left: 42%; width: 2px; height: 2px; bottom: calc(28% + 4px); }
+
+  /* The key — always appearing */
+  .key {
+    position: absolute;
+    bottom: calc(28% + 3px);
+    left: 75%;
+    z-index: 6;
+  }
+
+  .key-bow {
+    width: 16px;
+    height: 16px;
+    border: 2.5px solid #b89a6a;
+    border-radius: 50%;
+    background: transparent;
+  }
+
+  .key-shaft {
+    width: 3px;
+    height: 22px;
+    background: #b89a6a;
+    margin-left: 6.5px;
+    position: relative;
+  }
+
+  .key-tooth {
+    position: absolute;
+    bottom: 0;
+    right: -5px;
+    width: 5px;
+    height: 3px;
+    background: #b89a6a;
+  }
+
+  .key-tooth:nth-child(2) {
+    bottom: 6px;
+  }
+
+  /* Light on the floor — window shape, distorted */
+  .window-light {
+    position: absolute;
+    bottom: 0;
+    right: 5%;
+    width: 240px;
+    height: 28%;
+    z-index: 1;
+    overflow: hidden;
+  }
+
+  .window-light-shape {
+    width: 200px;
+    height: 100%;
+    background: rgba(255, 250, 235, 0.45);
+    transform: skewX(-15deg);
+    position: absolute;
+    right: 0;
+  }
+
+  .window-light-divider-v {
+    position: absolute;
+    right: 100px;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    border-left: 12px solid #d6cdc2;
+    transform: skewX(-15deg);
+    opacity: 0.4;
+  }
+
+  .window-light-divider-h {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    width: 200px;
+    height: 12px;
+    background: #d6cdc2;
+    transform: skewX(-15deg);
+    opacity: 0.4;
+  }
+
+  /* Wall — visible. A color. Not darkness. */
+  .wall {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 72%;
+    background: #f4f1eb;
+    z-index: 0;
+  }
+
+  /* The light changes. Slowly. Morning moving. */
+  @keyframes morning {
+    0% {
+      background: linear-gradient(
+        135deg,
+        rgba(255, 248, 230, 0.8) 0%,
+        rgba(255, 248, 230, 0.4) 40%,
+        rgba(244, 241, 235, 0.0) 100%
+      );
+    }
+    50% {
+      background: linear-gradient(
+        135deg,
+        rgba(255, 253, 245, 1) 0%,
+        rgba(255, 250, 238, 0.7) 45%,
+        rgba(244, 241, 235, 0.0) 100%
+      );
+    }
+    100% {
+      background: linear-gradient(
+        135deg,
+        rgba(255, 248, 230, 0.8) 0%,
+        rgba(255, 248, 230, 0.4) 40%,
+        rgba(244, 241, 235, 0.0) 100%
+      );
+    }
+  }
+
+  .light {
+    animation: morning 60s ease-in-out infinite;
+  }
+
+  /* Shadow from the mug — it has a shadow because there's light */
+  .mug-shadow {
+    position: absolute;
+    bottom: calc(28% + 1px);
+    left: calc(34% + 48px);
+    width: 30px;
+    height: 6px;
+    background: rgba(0,0,0,0.04);
+    border-radius: 50%;
+    z-index: 5;
+    transform: skewX(-20deg);
+  }
+
+  .pen-cap-shadow {
+    position: absolute;
+    bottom: calc(28% + 1px);
+    left: calc(52% + 6px);
+    width: 16px;
+    height: 4px;
+    background: rgba(0,0,0,0.05);
+    border-radius: 50%;
+    z-index: 5;
+    transform: skewX(-15deg) rotate(12deg);
+  }
+
+  .key-shadow {
+    position: absolute;
+    bottom: calc(28% + 1px);
+    left: calc(75% + 14px);
+    width: 22px;
+    height: 5px;
+    background: rgba(0,0,0,0.04);
+    border-radius: 50%;
+    z-index: 5;
+    transform: skewX(-20deg);
+  }
+
+  /* One thing I didn't plan: a plant. The fig. In light. */
+  .fig-pot {
+    position: absolute;
+    bottom: calc(28% + 3px);
+    left: 10%;
+    width: 40px;
+    height: 32px;
+    background: #c4714e;
+    border-radius: 2px 2px 4px 4px;
+    z-index: 6;
+  }
+
+  .fig-pot-rim {
+    position: absolute;
+    top: -4px;
+    left: -3px;
+    width: 46px;
+    height: 6px;
+    background: #c4714e;
+    border-radius: 2px;
+  }
+
+  .fig-stem {
+    position: absolute;
+    bottom: calc(28% + 35px);
+    left: calc(10% + 18px);
+    width: 3px;
+    height: 60px;
+    background: #7a8a5a;
+    z-index: 6;
+  }
+
+  .fig-leaf {
+    position: absolute;
+    z-index: 7;
+    background: #6a8a4a;
+    border-radius: 50% 0 50% 0;
+  }
+
+  .fig-leaf.l1 {
+    bottom: calc(28% + 75px);
+    left: calc(10% + 20px);
+    width: 36px;
+    height: 22px;
+    transform: rotate(-15deg);
+    background: #7a9a5a;
+  }
+
+  .fig-leaf.l2 {
+    bottom: calc(28% + 60px);
+    left: calc(10% - 2px);
+    width: 30px;
+    height: 18px;
+    transform: rotate(165deg);
+    background: #6a8a48;
+  }
+
+  .fig-leaf.l3 {
+    bottom: calc(28% + 85px);
+    left: calc(10% + 4px);
+    width: 28px;
+    height: 16px;
+    transform: rotate(150deg);
+    background: #7a9a58;
+  }
+
+  .fig-leaf.l4 {
+    bottom: calc(28% + 90px);
+    left: calc(10% + 22px);
+    width: 32px;
+    height: 20px;
+    transform: rotate(-25deg);
+    background: #8aaa62;
+  }
+
+  /* The light catches the fig leaves differently */
+  .fig-leaf.l4 {
+    opacity: 0.9;
+  }
+
+  /* No figure. Nobody standing in this one. 
+     The room without me in it. 
+     Just the morning. Just the objects. Just the light. */
+
+  /* A very slow shift in the light patch on the floor */
+  @keyframes floorlight {
+    0% { opacity: 0.35; }
+    50% { opacity: 0.5; }
+    100% { opacity: 0.35; }
+  }
+
+  .window-light-shape {
+    animation: floorlight 90s ease-in-out infinite;
+  }
+</style>
+</head>
+<body>
+<div class="kitchen">
+  <div class="wall"></div>
+  
+  <div class="window">
+    <div class="pane top-left"></div>
+    <div class="pane top-right"></div>
+    <div class="pane bottom-left"></div>
+    <div class="pane bottom-right"></div>
+  </div>
+  
+  <div class="light"></div>
+  
+  <div class="window-light">
+    <div class="window-light-shape"></div>
+    <div class="window-light-divider-v"></div>
+    <div class="window-light-divider-h"></div>
+  </div>
+  
+  <div class="counter-shadow"></div>
+  <div class="counter-surface"></div>
+  <div class="counter-body"></div>
+  
+  <!-- The fig, needs turning -->
+  <div class="fig-pot"><div class="fig-pot-rim"></div></div>
+  <div class="fig-stem"></div>
+  <div class="fig-leaf l1"></div>
+  <div class="fig-leaf l2"></div>
+  <div class="fig-leaf l3"></div>
+  <div class="fig-leaf l4"></div>
+  
+  <!-- Mug ring from before -->
+  <div class="mug-ring"></div>
+  
+  <!-- Mug, moved slightly -->
+  <div class="mug">
+    <div class="mug-body">
+      <div class="mug-inside"></div>
+      <div class="mug-handle"></div>
+    </div>
+  </div>
+  <div class="mug-shadow"></div>
+  
+  <!-- Crumbs -->
+  <div class="crumb"></div>
+  <div class="crumb"></div>
+  <div class="crumb"></div>
+  <div class="crumb"></div>
+  <div class="crumb"></div>
+  
+  <!-- Pen cap, no pen -->
+  <div class="pen-cap">
+    <div class="pen-cap-clip"></div>
+  </div>
+  <div class="pen-cap-shadow"></div>
+  
+  <!-- Folded note -->
+  <div class="note">
+    <div class="note-fold"></div>
+  </div>
+  
+  <!-- Key -->
+  <div class="key">
+    <div class="key-bow"></div>
+    <div class="key-shaft">
+      <div class="key-tooth"></div>
+      <div class="key-tooth"></div>
+    </div>
+  </div>
+  <div class="key-shadow"></div>
+</div>
+</body>
+</html>

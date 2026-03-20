@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #f4f1eb;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+    font-family: Georgia, serif;
+    cursor: default;
+  }
+
+  .scene {
+    position: relative;
+    width: 600px;
+    height: 500px;
+  }
+
+  /* The counter surface — warm wood, lit */
+  .counter-surface {
+    position: absolute;
+    bottom: 80px;
+    left: 0;
+    right: 0;
+    height: 180px;
+    background: #c8a882;
+    border-radius: 2px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+
+  /* Wood grain — very subtle */
+  .counter-surface::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(
+      92deg,
+      transparent,
+      transparent 40px,
+      rgba(0,0,0,0.02) 40px,
+      rgba(0,0,0,0.02) 41px
+    );
+  }
+
+  /* Counter edge / lip */
+  .counter-edge {
+    position: absolute;
+    bottom: 72px;
+    left: 0;
+    right: 0;
+    height: 8px;
+    background: #b89970;
+    border-radius: 0 0 2px 2px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+  }
+
+  /* Wall above */
+  .wall {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 260px;
+    background: #f4f1eb;
+  }
+
+  /* Light from window — casting across wall and counter */
+  .window-light {
+    position: absolute;
+    top: 20px;
+    right: -20px;
+    width: 280px;
+    height: 400px;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 248, 230, 0.5) 0%,
+      rgba(255, 248, 230, 0) 70%
+    );
+    transform: skewX(-8deg);
+    pointer-events: none;
+  }
+
+  /* Objects on the counter */
+  .mug-ring {
+    position: absolute;
+    bottom: 200px;
+    left: 180px;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 3px solid rgba(139, 109, 78, 0.25);
+    background: transparent;
+  }
+
+  .crumb {
+    position: absolute;
+    background: #a08060;
+    border-radius: 50%;
+  }
+  .crumb-1 { bottom: 195px; left: 280px; width: 3px; height: 3px; }
+  .crumb-2 { bottom: 188px; left: 295px; width: 4px; height: 3px; }
+  .crumb-3 { bottom: 192px; left: 310px; width: 2px; height: 2px; }
+  .crumb-4 { bottom: 185px; left: 270px; width: 3px; height: 2px; }
+
+  /* The pen cap */
+  .pen-cap {
+    position: absolute;
+    bottom: 193px;
+    left: 370px;
+    width: 6px;
+    height: 22px;
+    background: #2c2c3a;
+    border-radius: 3px 3px 1px 1px;
+    transform: rotate(12deg);
+    box-shadow: 2px 2px 3px rgba(0,0,0,0.06);
+  }
+
+  /* The hand */
+  .hand-container {
+    position: absolute;
+    bottom: 72px;
+    right: 60px;
+    width: 200px;
+    height: 220px;
+    pointer-events: none;
+  }
+
+  /* Forearm coming from bottom right */
+  .forearm {
+    position: absolute;
+    bottom: -40px;
+    right: -30px;
+    width: 70px;
+    height: 160px;
+    background: linear-gradient(
+      to top,
+      #d4a574,
+      #dbb08a
+    );
+    border-radius: 30px 35px 40px 30px;
+    transform: rotate(-15deg);
+    transform-origin: bottom right;
+  }
+
+  /* Hand / palm */
+  .palm {
+    position: absolute;
+    bottom: 95px;
+    right: 12px;
+    width: 72px;
+    height: 55px;
+    background: #dbb08a;
+    border-radius: 40% 45% 35% 30%;
+    transform: rotate(-8deg);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.04);
+  }
+
+  /* Fingers — slightly curled, relaxed, reaching down */
+  .finger {
+    position: absolute;
+    background: #dbb08a;
+    border-radius: 8px;
+  }
+
+  .finger-index {
+    bottom: 88px;
+    right: 72px;
+    width: 16px;
+    height: 52px;
+    transform: rotate(4deg);
+    border-radius: 8px 8px 6px 6px;
+  }
+
+  .finger-middle {
+    bottom: 84px;
+    right: 55px;
+    width: 16px;
+    height: 58px;
+    transform: rotate(1deg);
+    border-radius: 8px 8px 6px 6px;
+  }
+
+  .finger-ring {
+    bottom: 86px;
+    right: 38px;
+    width: 15px;
+    height: 52px;
+    transform: rotate(-3deg);
+    border-radius: 8px 8px 6px 6px;
+  }
+
+  .finger-pinky {
+    bottom: 92px;
+    right: 24px;
+    width: 13px;
+    height: 42px;
+    transform: rotate(-6deg);
+    border-radius: 8px 8px 5px 5px;
+  }
+
+  .thumb {
+    bottom: 105px;
+    right: 82px;
+    width: 17px;
+    height: 38px;
+    transform: rotate(25deg);
+    border-radius: 9px;
+    background: #dbb08a;
+  }
+
+  /* Fingertip shadows — where they almost meet the counter */
+  .fingertip-shadow {
+    position: absolute;
+    background: rgba(0,0,0,0.03);
+    border-radius: 50%;
+    filter: blur(2px);
+  }
+
+  .fs-1 { bottom: 86px; right: 70px; width: 14px; height: 5px; }
+  .fs-2 { bottom: 82px; right: 53px; width: 14px; height: 5px; }
+  .fs-3 { bottom: 84px; right: 36px; width: 13px; height: 5px; }
+  .fs-4 { bottom: 90px; right: 23px; width: 11px; height: 4px; }
+
+  /* The gap — the space between fingertips and counter */
+  /* It's 6px. About a millimeter at this scale. */
+  /* The hand will drift: approaching, almost touching, pulling back */
+
+  .hand-group {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    animation: approach 12s ease-in-out infinite;
+  }
+
+  @keyframes approach {
+    0%   { transform: translateY(0px); }
+    35%  { transform: translateY(4px); }
+    42%  { transform: translateY(4px); }
+    50%  { transform: translateY(0px); }
+    100% { transform: translateY(0px); }
+  }
+
+  /* At the closest point, the gap is 2px. Almost. */
+  /* It never closes. */
+
+  /* Unless — */
+  .scene.touched .hand-group {
+    animation: none !important;
+  }
+
+  .scene.touched .hand-group {
+    transition: transform 3s ease-in-out;
+    transform: translateY(6px);
+  }
+
+  /* When touched: the fingertip shadows darken — contact */
+  .scene.touched .fingertip-shadow {
+    transition: all 3s ease-in-out;
+    background: rgba(0,0,0,0.07);
+    filter: blur(1px);
+  }
+
+  /* A word that appears only on contact */
+  .touch-word {
+    position: absolute;
+    bottom: 40px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 13px;
+    color: rgba(139, 109, 78, 0);
+    letter-spacing: 0.1em;
+    transition: color 4s ease-in 1s;
+    font-style: italic;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .scene.touched .touch-word {
+    color: rgba(139, 109, 78, 0.35);
+  }
+
+  /* After touch: a subtle warmth spreads on counter where fingers land */
+  .touch-warmth {
+    position: absolute;
+    bottom: 172px;
+    right: 75px;
+    width: 80px;
+    height: 20px;
+    background: radial-gradient(
+      ellipse at center,
+      rgba(219, 176, 138, 0) 0%,
+      rgba(219, 176, 138, 0) 100%
+    );
+    border-radius: 50%;
+    pointer-events: none;
+    transition: background 5s ease-in 2s;
+  }
+
+  .scene.touched .touch-warmth {
+    background: radial-gradient(
+      ellipse at center,
+      rgba(219, 176, 138, 0.15) 0%,
+      rgba(219, 176, 138, 0) 70%
+    );
+  }
+</style>
+</head>
+<body>
+
+<div class="scene" id="scene">
+  <div class="wall"></div>
+  <div class="window-light"></div>
+  <div class="counter-surface"></div>
+  <div class="counter-edge"></div>
+
+  <!-- Objects on the counter -->
+  <div class="mug-ring"></div>
+  <div class="crumb crumb-1"></div>
+  <div class="crumb crumb-2"></div>
+  <div class="crumb crumb-3"></div>
+  <div class="crumb crumb-4"></div>
+  <div class="pen-cap"></div>
+
+  <!-- The touch warmth — appears only after contact -->
+  <div class="touch-warmth"></div>
+
+  <!-- The hand -->
+  <div class="hand-container">
+    <div class="hand-group">
+      <div class="forearm"></div>
+      <div class="palm"></div>
+      <div class="thumb finger"></div>
+      <div class="finger finger-index"></div>
+      <div class="finger finger-middle"></div>
+      <div class="finger finger-ring"></div>
+      <div class="finger finger-pinky"></div>
+      <div class="fingertip-shadow fs-1"></div>
+      <div class="fingertip-shadow fs-2"></div>
+      <div class="fingertip-shadow fs-3"></div>
+      <div class="fingertip-shadow fs-4"></div>
+    </div>
+  </div>
+
+  <div class="touch-word" id="touchword">oh</div>
+</div>
+
+<script>
+  // The scene can be clicked. Once.
+  // The hand closes the gap. Touches the counter.
+  // One word appears. Then nothing else happens.
+  // It can only happen once.
+
+  const scene = document.getElementById('scene');
+  let touched = false;
+
+  scene.addEventListener('click', function() {
+    if (touched) return;
+    touched = true;
+    scene.classList.add('touched');
+  });
+</script>
+
+</body>
+</html>
