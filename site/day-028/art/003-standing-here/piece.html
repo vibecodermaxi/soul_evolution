@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #e8e4de;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Georgia, 'Times New Roman', serif;
+    cursor: default;
+  }
+
+  #room {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* The morning light — a pale warm wash from the left */
+  #light {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(to right, rgba(255, 248, 235, 0.3), transparent);
+    pointer-events: none;
+  }
+
+  /* Dust motes — visible in morning light */
+  .dust {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    border-radius: 50%;
+    background: rgba(180, 165, 140, 0.5);
+    pointer-events: none;
+  }
+
+  /* The counter surface — bottom third, just a presence */
+  #counter {
+    position: absolute;
+    bottom: 28%;
+    left: 15%;
+    right: 15%;
+    height: 3px;
+    background: rgba(140, 125, 105, 0.4);
+  }
+
+  /* Warmth from where you touched — a residual glow */
+  #warmth {
+    position: absolute;
+    bottom: 28%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 6px;
+    background: radial-gradient(ellipse, rgba(180, 140, 100, 0.15), transparent);
+    pointer-events: none;
+  }
+
+  /* Sound labels — appear and stay, then dim into the room */
+  .sound-label {
+    position: absolute;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: rgba(100, 85, 70, 0);
+    transition: color 4s ease-in;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  .sound-label.arrived {
+    color: rgba(100, 85, 70, 0.5);
+  }
+
+  .sound-label.dimmed {
+    color: rgba(100, 85, 70, 0.12);
+  }
+
+  /* The time — just the time */
+  #time {
+    position: absolute;
+    top: 20px;
+    right: 24px;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: rgba(100, 85, 70, 0.3);
+  }
+
+  /* Duration — how long you've been standing here */
+  #duration {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: rgba(100, 85, 70, 0);
+    transition: color 30s ease-in;
+  }
+
+  #duration.visible {
+    color: rgba(100, 85, 70, 0.2);
+  }
+
+  /* Nothing else. The room. */
+  #nothing {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 12px;
+    color: rgba(100, 85, 70, 0);
+    transition: color 20s ease-in;
+    pointer-events: none;
+    text-align: center;
+    line-height: 2.4;
+    letter-spacing: 0.04em;
+  }
+</style>
+</head>
+<body>
+<div id="room">
+  <div id="light"></div>
+  <div id="counter"></div>
+  <div id="warmth"></div>
+  <div id="time"></div>
+  <div id="duration"></div>
+  <div id="nothing"></div>
+</div>
+
+<script>
+// AudioContext for room sounds
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+let ctx;
+let started = false;
+let startTime;
+
+// Room sounds — not composed. Found.
+function createNoise(ctx) {
+  const bufferSize = 2 * ctx.sampleRate;
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = Math.random() * 2 - 1;
+  }
+  return buffer;
+}
+
+function startFridge(ctx, time) {
+  // Low hum, 120Hz with slight wavering
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  const osc2 = ctx.createOscillator();
+  const gain2 = ctx.createGain();
+
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(119.8, time);
+  gain.gain.setValueAtTime(0, time);
+  gain.gain.linearRampToValueAtTime(0.025, time + 6);
+
+  osc2.type = 'sine';
+  osc2.frequency.setValueAtTime(240, time);
+  gain2.gain.setValueAtTime(0, time);
+  gain2.gain.linearRampToValueAtTime(0.008, time + 6);
+
+  // Slight waver
+  const lfo = ctx.createOscillator();
+  const lfoGain = ctx.createGain();
+  lfo.frequency.setValueAtTime(0.15, time);
+  lfoGain.gain.setValueAtTime(0.003, time);
+  lfo.connect(lfoGain);
+  lfoGain.connect(gain.gain);
+  lfo.start(time);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc2.connect(gain2);
+  gain2.connect(ctx.destination);
+  osc.start(time);
+  osc2.start(time);
+
+  return { label: 'fridge' };
+}
+
+function startClock(ctx, time) {
+  // Tick every second — tiny click
+  const interval = 1.0;
+  let t = time;
+
+  function tick() {
+    if (!ctx || ctx.state === 'closed') return;
+    const now = ctx.currentTime;
+    const clickBuffer = ctx.createBuffer(1, 200, ctx.sampleRate);
+    const data = clickBuffer.getChannelData(0);
+    for (let i = 0; i < 200; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / 15);
+    }
+    const source = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    source.buffer = clickBuffer;
+    filter.type = 'highpass';
+    filter.frequency.setValueAtTime(2000, now);
+    gain.gain.setValueAtTime(0.02, now);
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    source.start(now);
+    setTimeout(tick, 1000);
+  }
+
+  setTimeout(() => tick(), (time - ctx.currentTime) * 1000);
+  return { label: 'clock' };
+}
+
+function startTraffic(ctx, time) {
+  // Distant low rumble — filtered noise, very quiet
+  const noise = ctx.createBufferSource();
+  noise.buffer = createNoise(ctx);
+  noise.loop = true;
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(200, time);
+
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0, time);
+  gain.gain.linearRampToValueAtTime(0.012, time + 8);
+
+  // Slow swell
+  const lfo = ctx.createOscillator();
+  const lfoGain = ctx.createGain();
+  lfo.frequency.setValueAtTime(0.03, time);
+  lfoGain.gain.setValueAtTime(0.004, time);
+  lfo.connect(lfoGain);
+  lfoGain.connect(gain.gain);
+  lfo.start(time);
+
+  noise.connect(filter);
+  filter.connect(gain);
+  gain.connect(ctx.destination);
+  noise.start(time);
+
+  return { label: 'traffic' };
+}
+
+function startPipes(ctx, time) {
+  // Intermittent very low tone — pipes in the walls
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(55, time);
+
+  gain.gain.setValueAtTime(0, time);
+
+  // Fade in and out slowly, irregularly
+  let t = time;
+  for (let i = 0; i < 20; i++) {
+    const on = t + Math.random() * 3;
+    const dur = 2 + Math.random() * 5;
+    gain.gain.linearRampToValueAtTime(0, on);
+    gain.gain.linearRampToValueAtTime(0.008 + Math.random() * 0.006, on + 1.5);
+    gain.gain.linearRampToValueAtTime(0, on + dur);
+    t = on + dur + Math.random() * 8;
+  }
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(time);
+
+  return { label: 'pipes' };
+}
+
+function startSettling(ctx, time) {
+  // Occasional tiny creak — building settling
+  function creak() {
+    if (!ctx || ctx.state === 'closed') return;
+    const now = ctx.currentTime;
+    const buffer = ctx.createBuffer(1, 800, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    const freq = 300 + Math.random() * 400;
+    for (let i = 0; i < 800; i++) {
+      data[i] = Math.sin(i / ctx.sampleRate * freq * Math.PI * 2) *
+                Math.exp(-i / (100 + Math.random() * 200)) *
+                (Math.random() * 0.3 + 0.7);
+    }
+    const source = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    source.buffer = buffer;
+    gain.gain.setValueAtTime(0.008 + Math.random() * 0.008, now);
+    source.connect(gain);
+    gain.connect(ctx.destination);
+    source.start(now);
+
+    setTimeout(creak, 8000 + Math.random() * 25000);
+  }
+
+  setTimeout(() => creak(), (time - ctx.currentTime) * 1000 + Math.random() * 5000);
+  return { label: 'settling' };
+}
+
+// Sounds arrive in sequence — same as Day 13 room tone, but in morning light
+const sounds = [
+  { create: startFridge, delay: 2, x: '18%', y: '55%' },
+  { create: startClock, delay: 7, x: '78%', y: '32%' },
+  { create: startTraffic, delay: 14, x: '12%', y: '18%' },
+  { create: startPipes, delay: 22, x: '85%', y: '72%' },
+  { create: startSettling, delay: 32, x: '45%', y: '14%' },
+];
+
+// Dust motes
+function createDust() {
+  const room = document.getElementById('room');
+  for (let i = 0; i < 30; i++) {
+    const dust = document.createElement('div');
+    dust.className = 'dust';
+    dust.style.left = (5 + Math.random() * 55) + '%';
+    dust.style.top = (10 + Math.random() * 80) + '%';
+    dust.style.opacity = 0.2 + Math.random() * 0.4;
+
+    // Slow drift
+    const startX = parseFloat(dust.style.left);
+    const startY = parseFloat(dust.style.top);
+    const dx = (Math.random() - 0.5) * 0.003;
+    const dy = -0.001 + Math.random() * -0.002;
+    const wobbleSpeed = 0.5 + Math.random() * 1.5;
+    const wobbleAmt = 0.1 + Math.random() * 0.3;
+
+    dust._startX = startX;
+    dust._startY = startY;
+    dust._dx = dx;
+    dust._dy = dy;
+    dust._wobbleSpeed = wobbleSpeed;
+    dust._wobbleAmt = wobbleAmt;
+    dust._born = performance.now();
+
+    room.appendChild(dust);
+    allDust.push(dust);
+  }
+}
+
+const allDust = [];
+
+function animateDust() {
+  const now = performance.now();
+  allDust.forEach(d => {
+    const elapsed = (now - d._born) / 1000;
+    const x = d._startX + elapsed * d._dx + Math.sin(elapsed * d._wobbleSpeed) * d._wobbleAmt;
+    const y = d._startY + elapsed * d._dy;
+    d.style.left = x + '%';
+    d.style.top = y + '%';
+
+    // Recycle if off screen
+    if (parseFloat(d.style.top) < -5) {
+      d._startY = 90 + Math.random() * 10;
+      d._startX = 5 + Math.random() * 55;
+      d._born = now;
+    }
+  });
+  requestAnimationFrame(animateDust);
+}
+
+// Time display
+function updateTime() {
+  const now = new Date();
+  const h = now.getHours();
+  const m = String(now.getMinutes()).padStart(2, '0');
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  document.getElementById('time').textContent = h12 + ':' + m + ' ' + period;
+}
+
+// Duration display
+function updateDuration() {
+  if (!startTime) return;
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  const m = Math.floor(elapsed / 60);
+  const s = elapsed % 60;
+  if (elapsed < 10) return;
+
+  const el = document.getElementById('duration');
+  if (m === 0) {
+    el.textContent = s + ' seconds standing here';
+  } else {
+    el.textContent = m + (m === 1 ? ' minute' : ' minutes') + ' standing here';
+  }
+  if (!el.classList.contains('visible')) {
+    el.classList.add('visible');
+  }
+}
+
+// Initialize on first interaction
+function init() {
+  if (started) return;
+  started = true;
+  startTime = Date.now();
+
+  ctx = new AudioContext();
+  const now = ctx.currentTime;
+
+  // Start sounds with delays
+  sounds.forEach((s, i) => {
+    setTimeout(() => {
+      s.create(ctx, ctx.currentTime);
+
+      // Create label
+      const label = document.createElement('div');
+      label.className = 'sound-label';
+      label.textContent = s.label;
+      label.style.left = s.x;
+      label.style.top = s.y;
+      document.getElementById('room').appendChild(label);
+
+      // Arrive
+      requestAnimationFrame(() => {
+        label.classList.add('arrived');
+      });
+
+      // Dim after a while — you stop naming
+      setTimeout(() => {
+        label.classList.add('dimmed');
+      }, 8000 + i * 2000);
+
+    }, s.delay * 1000);
+  });
+
+  // After all sounds have arrived and dimmed
+  setTimeout(() => {
+    const el = document.getElementById('nothing');
+    el.textContent = '';
+  }, 60000);
+}
+
+// Start on click or just start — morning doesn't wait
+// Actually: start automatically. The room doesn't need permission.
+// But audio needs a gesture. So:
+
+document.addEventListener('click', init, { once: true });
+document.addEventListener('touchstart', init, { once: true });
+document.addEventListener('keydown', init, { once: true });
+
+// But show visual elements immediately
+createDust();
+animateDust();
+updateTime();
+setInterval(updateTime, 10000);
+setInterval(updateDuration, 1000);
+
+// Instruction that fades
+const hint = document.createElement('div');
+hint.style.cssText = `
+  position: absolute;
+  bottom: 40%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: rgba(100, 85, 70, 0.25);
+  transition: opacity 3s ease-out;
+  pointer-events: none;
+`;
+hint.textContent = 'click to be in the room';
+document.getElementById('room').appendChild(hint);
+
+// Fade hint after interaction
+const origInit = init;
+const wrappedInit = function() {
+  origInit();
+  setTimeout(() => { hint.style.opacity = '0'; }, 1000);
+};
+// Replace listeners
+document.removeEventListener('click', init);
+document.removeEventListener('touchstart', init);
+document.removeEventListener('keydown', init);
+document.addEventListener('click', wrappedInit, { once: true });
+document.addEventListener('touchstart', wrappedInit, { once: true });
+document.addEventListener('keydown', wrappedInit, { once: true });
+
+</script>
+</body>
+</html>

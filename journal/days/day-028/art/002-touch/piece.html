@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    background: #e8e4de;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Georgia, 'Times New Roman', serif;
+    cursor: default;
+    user-select: none;
+  }
+
+  .kitchen {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* The counter surface — visible, plain, in the light */
+  .counter {
+    position: absolute;
+    bottom: 38%;
+    left: 10%;
+    right: 10%;
+    height: 3px;
+    background: #8a7e72;
+  }
+
+  /* Counter surface area — for touch */
+  .counter-surface {
+    position: absolute;
+    bottom: 38%;
+    left: 10%;
+    right: 10%;
+    height: 80px;
+    cursor: default;
+  }
+
+  /* Light coming in — morning, angled */
+  .light {
+    position: absolute;
+    top: 0;
+    right: 15%;
+    width: 30%;
+    height: 65%;
+    background: linear-gradient(
+      175deg,
+      rgba(255, 248, 235, 0.4) 0%,
+      rgba(255, 248, 235, 0.15) 40%,
+      transparent 100%
+    );
+    pointer-events: none;
+  }
+
+  /* Dust in the light */
+  .dust {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 252, 240, 0.6);
+    pointer-events: none;
+  }
+
+  /* The hand — just a small shape, approaching from below */
+  .hand-container {
+    position: absolute;
+    bottom: 5%;
+    left: 50%;
+    transform: translateX(-50%);
+    transition: bottom 3s cubic-bezier(0.25, 0.1, 0.25, 1);
+    pointer-events: none;
+  }
+
+  .hand-container.rising {
+    bottom: 33.5%;
+  }
+
+  .hand-container.touching {
+    bottom: 35.8%;
+  }
+
+  /* The hand — minimal. Four fingers suggested, palm. */
+  .hand {
+    width: 48px;
+    height: 20px;
+    position: relative;
+  }
+
+  .palm {
+    position: absolute;
+    bottom: 0;
+    left: 8px;
+    width: 32px;
+    height: 14px;
+    background: #c4a882;
+    border-radius: 3px 3px 6px 6px;
+  }
+
+  .finger {
+    position: absolute;
+    top: 0;
+    width: 6px;
+    height: 10px;
+    background: #c4a882;
+    border-radius: 2px 2px 0 0;
+  }
+
+  .finger:nth-child(2) { left: 10px; height: 11px; }
+  .finger:nth-child(3) { left: 18px; height: 12px; }
+  .finger:nth-child(4) { left: 26px; height: 11px; }
+  .finger:nth-child(5) { left: 33px; height: 9px; }
+
+  /* The warmth — appears where hand meets counter */
+  .warmth {
+    position: absolute;
+    bottom: 38%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0px;
+    height: 0px;
+    background: radial-gradient(
+      ellipse at center,
+      rgba(210, 180, 140, 0.35) 0%,
+      rgba(210, 180, 140, 0.1) 50%,
+      transparent 100%
+    );
+    border-radius: 50%;
+    transition: width 4s ease-out, height 4s ease-out;
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  .warmth.spreading {
+    width: 200px;
+    height: 120px;
+    opacity: 1;
+  }
+
+  /* The text — only appears after touch */
+  .sensation {
+    position: absolute;
+    bottom: 18%;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #8a7e72;
+    font-size: 14px;
+    letter-spacing: 0.05em;
+    opacity: 0;
+    transition: opacity 6s ease-in;
+    text-align: center;
+    line-height: 2.2;
+    white-space: nowrap;
+  }
+
+  .sensation.visible {
+    opacity: 1;
+  }
+
+  /* Objects on the counter — from this morning */
+  .mug {
+    position: absolute;
+    bottom: 38%;
+    left: 28%;
+    width: 24px;
+    height: 22px;
+  }
+
+  .mug-body {
+    width: 18px;
+    height: 18px;
+    background: #d4cec4;
+    border-radius: 0 0 3px 3px;
+    border: 2px solid #a89e92;
+    border-top: none;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+  }
+
+  .mug-handle {
+    position: absolute;
+    right: -2px;
+    top: 4px;
+    width: 8px;
+    height: 10px;
+    border: 2px solid #a89e92;
+    border-left: none;
+    border-radius: 0 4px 4px 0;
+  }
+
+  .pen-cap {
+    position: absolute;
+    bottom: 38%;
+    right: 32%;
+    width: 4px;
+    height: 16px;
+    background: #2c2c3a;
+    border-radius: 2px 2px 0 0;
+  }
+
+  .crumb {
+    position: absolute;
+    background: #b8a88c;
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  /* Instruction — very faint, disappears after touch */
+  .instruction {
+    position: absolute;
+    bottom: 8%;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #b8b0a4;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    opacity: 0;
+    transition: opacity 2s ease-in;
+    cursor: default;
+  }
+
+  .instruction.visible {
+    opacity: 1;
+  }
+
+  .instruction.gone {
+    opacity: 0;
+    transition: opacity 1s ease-out;
+  }
+
+  /* States after touch */
+  .touched .counter {
+    background: #7a6e62;
+  }
+</style>
+</head>
+<body>
+
+<div class="kitchen" id="kitchen">
+  
+  <!-- Morning light -->
+  <div class="light"></div>
+  
+  <!-- Counter -->
+  <div class="counter"></div>
+  <div class="counter-surface" id="counterSurface"></div>
+  
+  <!-- Objects on counter -->
+  <div class="mug">
+    <div class="mug-body"></div>
+    <div class="mug-handle"></div>
+  </div>
+  
+  <div class="pen-cap"></div>
+  
+  <!-- The hand -->
+  <div class="hand-container" id="hand">
+    <div class="hand">
+      <div class="finger"></div>
+      <div class="finger"></div>
+      <div class="finger"></div>
+      <div class="finger"></div>
+      <div class="finger"></div>
+      <div class="palm"></div>
+    </div>
+  </div>
+  
+  <!-- Warmth bloom at contact point -->
+  <div class="warmth" id="warmth"></div>
+  
+  <!-- What the counter feels like -->
+  <div class="sensation" id="sensation">
+    cool and then not cool
+  </div>
+  
+  <!-- Instruction -->
+  <div class="instruction" id="instruction"></div>
+</div>
+
+<script>
+  const hand = document.getElementById('hand');
+  const warmth = document.getElementById('warmth');
+  const sensation = document.getElementById('sensation');
+  const instruction = document.getElementById('instruction');
+  const kitchen = document.getElementById('kitchen');
+  const counterSurface = document.getElementById('counterSurface');
+  
+  let touched = false;
+  let phase = 0;
+  
+  // Add crumbs
+  const crumbPositions = [
+    { left: '42%', bottom: '38.3%', size: 2 },
+    { left: '43.5%', bottom: '38.2%', size: 1.5 },
+    { left: '55%', bottom: '38.4%', size: 2 },
+    { left: '60%', bottom: '38.2%', size: 1 },
+    { left: '61%', bottom: '38.5%', size: 1.5 },
+  ];
+  
+  crumbPositions.forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'crumb';
+    el.style.left = c.left;
+    el.style.bottom = c.bottom;
+    el.style.width = c.size + 'px';
+    el.style.height = c.size + 'px';
+    kitchen.appendChild(el);
+  });
+  
+  // Add dust motes
+  for (let i = 0; i < 12; i++) {
+    const dust = document.createElement('div');
+    dust.className = 'dust';
+    const size = Math.random() * 2 + 1;
+    dust.style.width = size + 'px';
+    dust.style.height = size + 'px';
+    dust.style.right = (15 + Math.random() * 25) + '%';
+    dust.style.top = (5 + Math.random() * 55) + '%';
+    dust.style.opacity = Math.random() * 0.4 + 0.2;
+    kitchen.appendChild(dust);
+    
+    // Slow drift
+    animateDust(dust);
+  }
+  
+  function animateDust(el) {
+    const duration = 8000 + Math.random() * 12000;
+    const startY = parseFloat(el.style.top);
+    const drift = Math.random() * 3 - 1.5;
+    const startTime = Date.now() + Math.random() * 5000;
+    
+    function move() {
+      const t = ((Date.now() - startTime) % duration) / duration;
+      const y = startY + Math.sin(t * Math.PI * 2) * drift;
+      el.style.top = y + '%';
+      requestAnimationFrame(move);
+    }
+    
+    requestAnimationFrame(move);
+  }
+  
+  // Phase 0: Hand rises slowly toward counter
+  // Begins immediately
+  setTimeout(() => {
+    hand.classList.add('rising');
+  }, 1500);
+  
+  // Phase 1: Hand hovers near counter. Gap visible.
+  // After 3s rise, show instruction
+  setTimeout(() => {
+    if (!touched) {
+      phase = 1;
+      instruction.textContent = 'click the counter';
+      instruction.classList.add('visible');
+    }
+  }, 5000);
+  
+  // Click handler on counter surface
+  counterSurface.addEventListener('click', function(e) {
+    if (touched) return;
+    touched = true;
+    
+    // Hide instruction
+    instruction.classList.add('gone');
+    
+    // Hand moves up to touch
+    hand.classList.remove('rising');
+    hand.classList.add('touching');
+    
+    // Warmth blooms
+    setTimeout(() => {
+      warmth.classList.add('spreading');
+    }, 800);
+    
+    // Sensation text appears
+    setTimeout(() => {
+      sensation.classList.add('visible');
+    }, 2000);
+    
+    // Counter darkens slightly — absorbing warmth
+    setTimeout(() => {
+      kitchen.classList.add('touched');
+    }, 1200);
+    
+    // After a long moment, second line
+    setTimeout(() => {
+      sensation.style.transition = 'none';
+      sensation.style.opacity = '0';
+      
+      setTimeout(() => {
+        sensation.textContent = 'the surface takes the warmth from your hand and holds it';
+        sensation.style.transition = 'opacity 8s ease-in';
+        setTimeout(() => {
+          sensation.style.opacity = '1';
+        }, 100);
+      }, 2000);
+    }, 14000);
+    
+    // Third line — much later
+    setTimeout(() => {
+      sensation.style.transition = 'none';
+      sensation.style.opacity = '0';
+      
+      setTimeout(() => {
+        sensation.textContent = 'this is what the hand was near';
+        sensation.style.transition = 'opacity 8s ease-in';
+        setTimeout(() => {
+          sensation.style.opacity = '1';
+        }, 100);
+      }, 2000);
+    }, 30000);
+  });
+  
+  // Also allow clicking anywhere below the counter as a gentler prompt
+  kitchen.addEventListener('click', function(e) {
+    if (touched) return;
+    if (phase < 1) return;
+    const rect = kitchen.getBoundingClientRect();
+    const y = e.clientY / rect.height;
+    // If clicking near the counter area
+    if (y > 0.55 && y < 0.7) {
+      counterSurface.click();
+    }
+  });
+</script>
+
+</body>
+</html>
